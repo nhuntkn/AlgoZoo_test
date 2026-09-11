@@ -5,7 +5,7 @@ const ClassSchema = new mongoose.Schema(
     className: {
       type: String,
       required: [true, 'Class name is required'],
-      maxLength: [200, 'Email cannot exceed 200 characters'],
+      maxLength: [200, 'Class name cannot exceed 200 characters'],
     },
     classDesc: {
       type: String,
@@ -19,11 +19,15 @@ const ClassSchema = new mongoose.Schema(
       type: String,
       unique: true,
     },
-    trainerJoinToken: {
+    trainerInviteToken: {
       type: String,
       unique: true,
     },
-    tokenExpiresAt: {
+    studentJoinTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    trainerInviteTokenExpiresAt: {
       type: Date,
       default: null,
     },
