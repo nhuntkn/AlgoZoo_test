@@ -31,12 +31,14 @@ const loginResponse = (res, user) => {
       access_token_expires:getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
       refresh_token_expires:getDateAfterDuration(JWT_REFRESH_TOKEN_EXPIRES),
       result: {
-        title: 'SUCCESS',
+        status: 'success',
         message: 'User login successful',
         data: {
           id: user._id,
+          name: user.name,
+          username: user.username,
           email: user.email,
-          status: user.status,
+          isActive: user.isActive,
           role: user.role,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
