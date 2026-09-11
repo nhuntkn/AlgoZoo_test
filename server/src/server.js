@@ -1,6 +1,9 @@
 const express = require('express');
 const app = require('../src/app/index');
 const { APP_PORT } = require('../src/config/env');
+const fileRoutes = require("./routes/fileRoutes");
+
+app.use("/api/files", fileRoutes);
 
 // Global error handling middleware
 app.use((error, req, res, next) => {
