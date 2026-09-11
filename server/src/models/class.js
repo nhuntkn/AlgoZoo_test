@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose'); 
 
 const ClassSchema = new mongoose.Schema(
   {
@@ -18,10 +18,12 @@ const ClassSchema = new mongoose.Schema(
     studentJoinToken: {
       type: String,
       unique: true,
+      sparse: true, // Prevents duplicate key errors if token is temporarily null
     },
     trainerInviteToken: {
       type: String,
       unique: true,
+      sparse: true,
     },
     studentJoinTokenExpiresAt: {
       type: Date,
@@ -39,4 +41,4 @@ const ClassSchema = new mongoose.Schema(
   { timestamps: true } // This automatically adds createdAt
 );
 
-export default mongoose.models.Class || mongoose.model("Class", ClassSchema);
+module.exports = mongoose.model("Class", ClassSchema);

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose'); 
 
 const ClassMemberSchema = new mongoose.Schema(
     {
@@ -21,4 +21,4 @@ const ClassMemberSchema = new mongoose.Schema(
 // Enforce unique enrollment: A student/trainer can only belong to a class ONCE
 ClassMemberSchema.index({ classId: 1, userId: 1 }, { unique: true });
 
-export default mongoose.models.ClassMember || mongoose.model("classMember", ClassMemberSchema);
+module.exports = mongoose.model("classMember", ClassMemberSchema);
