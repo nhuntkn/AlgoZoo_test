@@ -10,7 +10,7 @@ const ProblemSchema = new mongoose.Schema(
       trim: true,
     },
     description: {
-      required: [true, 'Description is required'],
+      required: [false, 'Description is optional'],
       type: String,
     },
     problemType: {
@@ -19,7 +19,7 @@ const ProblemSchema = new mongoose.Schema(
       enum: ['OS', 'DB', 'DSA', 'OTHER'],
     },
     difficulty: {
-      required: [true, 'Difficulty is required'],
+      required: [false, 'Difficulty is optional'],
       type: String,
       enum: ['Easy', 'Medium', 'Hard'],
     },
