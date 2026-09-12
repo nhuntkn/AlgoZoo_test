@@ -1,3 +1,34 @@
+const mongoose = require('mongoose');
+
+const contentBlockSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["text", "code", "image", "file"],
+      required: true,
+    },
+
+    content: {
+      type: String,
+    },
+
+    language: {
+      type: String,
+    },
+
+    file_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "File",
+    },
+
+    filename: {
+      type: String,
+    },
+  },
+  { _id: false }
+);
+
+
 const SubmissionSchema = new mongoose.Schema(
   {
     class_problem_id: {
@@ -10,13 +41,10 @@ const SubmissionSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    content_blocks: [
-      {
-        text: { type: String, required: true },
-        image: { type: String, required: true },
-        code: { type: String, required: true },
-      },
-    ],
+    content_blocks: {
+        type: [contentBlockSchema],
+        required: true,
+    },
     is_late: { type: Boolean, default: false },
     status: {
       type: String,
@@ -28,5 +56,5 @@ const SubmissionSchema = new mongoose.Schema(
     reviewed_at: { type: Date, default: null },
     submitted_at: { type: Date, default: Date.now },
   },
-  { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
+  { timestamps: true }
 );
