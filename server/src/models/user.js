@@ -41,25 +41,21 @@ const UserSchema = new mongoose.Schema(
 
 
 // Replace spaces with dashes in username before saving
-UserSchema.pre('save', function (next) {
+UserSchema.pre('save', function () {
   if (this.username) {
     this.username = this.username.replace(/\s/g, '-');
   }
-
-  next();
 });
-  
+
 // Hash password before saving the document
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-
+UserSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 8);
-  next();
 });
+
 // Compare passwords
 UserSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
+
 module.exports = mongoose.model('User', UserSchema);
