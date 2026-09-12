@@ -1,0 +1,358 @@
+import { useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { Plus, Search, X, Check, ChevronRight, ChevronDown } from 'lucide-react'
+import { ClassTabNav } from '../../../components/layout/ClassTabNav'
+import { TypeBadge } from '../../../components/ui/Badge'
+import { Button } from '../../../components/ui/Button'
+import { ProgressBar } from '../../../components/ui/ProgressBar'
+
+const classNames: Record<string, string> = {
+  '1': 'WeCamp Batch 21',
+  '2': 'WeCamp Batch 22',
+}
+
+type ProblemType = 'DSA' | 'OS' | 'Database' | 'Other'
+const typeOrder: ProblemType[] = ['DSA', 'OS', 'Database', 'Other']
+
+type AssignedProblem = {
+  id: number
+  title: string
+  type: ProblemType
+  deadline: string
+  submitted: number
+  total: number
+}
+
+const assignedProblems: AssignedProblem[] = [
+  { id: 1, title: 'Two Sum', type: 'DSA', deadline: 'Sep 20', submitted: 18, total: 25 },
+  { id: 2, title: 'Binary Search', type: 'DSA', deadline: 'Sep 22', submitted: 10, total: 25 },
+  { id: 3, title: 'Reverse Linked List', type: 'DSA', deadline: 'Sep 25', submitted: 6, total: 25 },
+  { id: 4, title: 'Process Scheduling', type: 'OS', deadline: 'Sep 18', submitted: 20, total: 25 },
+  { id: 5, title: 'Memory Management', type: 'OS', deadline: 'Sep 28', submitted: 3, total: 25 },
+]
+
+type BankProblem = { id: number; title: string; type: ProblemType }
+
+const bankProblems: BankProblem[] = [
+  { id: 10, title: 'Valid Anagram', type: 'DSA' },
+  { id: 11, title: 'Merge Sort', type: 'DSA' },
+  { id: 12, title: 'Course Schedule', type: 'DSA' },
+  { id: 13, title: 'SQL Queries', type: 'Database' },
+  { id: 14, title: 'Joins & Aggregations', type: 'Database' },
+  { id: 15, title: 'Deadlock Detection', type: 'OS' },
+]
+
+type Selected = { problem: BankProblem; deadline: string }
+
+export function ClassProblems() {
+  const { classId = '1' } = useParams()
+  const className = classNames[classId] ?? 'WeCamp Batch 21'
+
+  // Problem list state
+  const [search, setSearch] = useState('')
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false)
+  const [bankSearch, setBankSearch] = useState('')
+  const [selected, setSelected] = useState<Selected[]>([])
+  const [assigned, setAssigned] = useState(false)
+
+  const tabs = [
+    { label: 'Overview', to: `/trainer/classes/${classId}/overview` },
+    { label: 'Problems', to: `/trainer/classes/${classId}/problems` },
+    { label: 'Submissions', to: `/trainer/classes/${classId}/submissions` },
+    { label: 'Students', to: `/trainer/classes/${classId}/students` },
+  ]
+
+  // Filter & group assigned problems
+  const filtered = assignedProblems.filter((p) =>
+    p.title.toLowerCase().includes(search.toLowerCase())
+  )
+  const isSearching = search.trim() !== ''
+
+  const grouped = typeOrder.reduce<Record<string, AssignedProblem[]>>((acc, type) => {
+    const items = filtered.filter((p) => p.type === type)
+    if (items.length > 0) acc[type] = items
+    return acc
+  }, {})
+
+  const toggleGroup = (type: string) => {
+    if (isSearching) return
+    setCollapsed((prev) => ({ ...prev, [type]: !prev[type] }))
+  }
+
+  // Modal helpers
+  const filteredBank = bankProblems.filter((p) =>
+    p.title.toLowerCase().includes(bankSearch.toLowerCase())
+  )
+
+  const toggleProblem = (p: BankProblem) => {
+    setSelected((prev) =>
+      prev.find((s) => s.problem.id === p.id)
+        ? prev.filter((s) => s.problem.id !== p.id)
+        : [...prev, { problem: p, deadline: '' }]
+    )
+  }
+
+  const setDeadline = (id: number, deadline: string) => {
+    setSelected((prev) => prev.map((s) => s.problem.id === id ? { ...s, deadline } : s))
+  }
+
+  const handleAssign = () => setAssigned(true)
+
+  const closeModal = () => {
+    setShowModal(false)
+    setSelected([])
+    setAssigned(false)
+    setBankSearch('')
+  }
+
+  return (
+    <div>
+      <ClassTabNav
+        crumbs={[
+          { label: 'My Classes', to: '/trainer/classes' },
+          { label: className, to: `/trainer/classes/${classId}/overview` },
+          { label: 'Problems' },
+        ]}
+        title={className}
+        tabs={tabs}
+      />
+
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Assigned Problems</h2>
+          <p className="text-sm text-gray-400">{assignedProblems.length} problems assigned</p>
+        </div>
+        <Button onClick={() => setShowModal(true)}>
+          <Plus size={15} /> Assign Problems
+        </Button>
+      </div>
+
+      {/* Search bar */}
+      <div className="mb-4">
+        <div className="relative max-w-xs">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search problems..."
+            className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:border-accent/50"
+          />
+        </div>
+      </div>
+
+      {/* Grouped problem list */}
+      {Object.keys(grouped).length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm py-12 text-center text-sm text-gray-400">
+          No problems found
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {typeOrder.filter((type) => grouped[type]).map((type) => {
+            const items = grouped[type]
+            const isOpen = isSearching ? true : !collapsed[type]
+            const totalSubmitted = items.reduce((sum, p) => sum + p.submitted, 0)
+            const totalExpected = items.reduce((sum, p) => sum + p.total, 0)
+            const groupPct = totalExpected > 0 ? Math.round((totalSubmitted / totalExpected) * 100) : 0
+
+            return (
+              <div key={type} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                {/* Group header */}
+                <button
+                  onClick={() => toggleGroup(type)}
+                  className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${
+                    isSearching ? 'cursor-default' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {!isSearching && (
+                      isOpen
+                        ? <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
+                        : <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+                    )}
+                    <TypeBadge type={type} />
+                    <span className="font-semibold text-gray-800 text-sm">
+                      {items.length} {items.length === 1 ? 'problem' : 'problems'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-gray-400">
+                      {totalSubmitted} / {totalExpected} submitted · {groupPct}%
+                    </span>
+                    <Link
+                      to={`/trainer/classes/${classId}/submissions?topic=${encodeURIComponent(type)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-accent font-semibold hover:underline flex items-center gap-0.5"
+                    >
+                      View Submissions <ChevronRight size={12} />
+                    </Link>
+                  </div>
+                </button>
+
+                {/* Problem rows */}
+                {isOpen && (
+                  <div className="border-t border-gray-100">
+                    <div className="grid grid-cols-[1fr_110px_200px_140px] px-5 py-2 bg-gray-50/60 border-b border-gray-100">
+                      {['PROBLEM', 'DEADLINE', 'SUBMISSION PROGRESS', 'ACTION'].map((h) => (
+                        <span key={h} className="text-[10px] font-bold text-gray-400 tracking-widest">{h}</span>
+                      ))}
+                    </div>
+                    {items.map((p, i) => {
+                      const pct = Math.round((p.submitted / p.total) * 100)
+                      return (
+                        <div
+                          key={p.id}
+                          className={`grid grid-cols-[1fr_110px_200px_140px] items-center px-5 py-3.5 hover:bg-gray-50 transition-colors ${
+                            i < items.length - 1 ? 'border-b border-gray-50' : ''
+                          }`}
+                        >
+                          <Link
+                            to={`/trainer/classes/${classId}/submissions?problem=${encodeURIComponent(p.title)}`}
+                            className="text-sm font-medium text-gray-900 hover:text-accent transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {p.title}
+                          </Link>
+                          <span className="text-sm text-gray-500">{p.deadline}</span>
+                          <div className="pr-4">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-gray-400">{p.submitted}/{p.total}</span>
+                              <span className="text-xs font-medium text-gray-600">{pct}%</span>
+                            </div>
+                            <ProgressBar value={pct} />
+                          </div>
+                          <Link
+                            to={`/trainer/classes/${classId}/submissions?problem=${encodeURIComponent(p.title)}`}
+                            className="text-xs text-accent font-semibold hover:underline flex items-center gap-0.5"
+                          >
+                            View Submissions <ChevronRight size={12} />
+                          </Link>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Assign Problems Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Assign Problems to {className}</h3>
+              <button onClick={closeModal}><X size={18} className="text-gray-400 hover:text-gray-700" /></button>
+            </div>
+
+            {assigned ? (
+              <div className="p-10 flex flex-col items-center gap-3 text-center">
+                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                  <Check size={24} className="text-green-600" />
+                </div>
+                <p className="font-bold text-gray-900 text-lg">Problems assigned!</p>
+                <p className="text-sm text-gray-400">{selected.length} problem{selected.length !== 1 ? 's' : ''} added to {className}</p>
+                <Button onClick={closeModal}>Done</Button>
+              </div>
+            ) : (
+              <div className="flex divide-x divide-gray-100" style={{ height: '420px' }}>
+                {/* Left: Problem Bank */}
+                <div className="flex-1 flex flex-col">
+                  <div className="p-4 border-b border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Problem Bank</p>
+                    <div className="relative">
+                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={bankSearch}
+                        onChange={(e) => setBankSearch(e.target.value)}
+                        placeholder="Search problems..."
+                        className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-accent/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2">
+                    {filteredBank.map((p) => {
+                      const isSelected = selected.some((s) => s.problem.id === p.id)
+                      return (
+                        <label
+                          key={p.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors ${
+                            isSelected ? 'bg-accent/5 border border-accent/20' : 'hover:bg-gray-50 border border-transparent'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleProblem(p)}
+                            className="accent-red-600"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{p.title}</p>
+                          </div>
+                          <TypeBadge type={p.type} />
+                        </label>
+                      )
+                    })}
+                    {filteredBank.length === 0 && (
+                      <p className="text-sm text-gray-400 text-center py-8">No problems found</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Selected Problems */}
+                <div className="w-72 flex flex-col">
+                  <div className="p-4 border-b border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                      Selected ({selected.length})
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {selected.length === 0 && (
+                      <p className="text-sm text-gray-400 text-center py-8">Select problems from the bank</p>
+                    )}
+                    {selected.map(({ problem, deadline }) => (
+                      <div key={problem.id} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{problem.title}</p>
+                            <TypeBadge type={problem.type} />
+                          </div>
+                          <button onClick={() => toggleProblem(problem)} className="text-gray-400 hover:text-gray-600 ml-2">
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Deadline (optional)</label>
+                          <input
+                            type="date"
+                            value={deadline}
+                            onChange={(e) => setDeadline(problem.id, e.target.value)}
+                            className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-accent/60"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-4 border-t border-gray-100">
+                    <Button
+                      onClick={handleAssign}
+                      disabled={selected.length === 0}
+                      className="w-full justify-center"
+                    >
+                      Assign to Class
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
