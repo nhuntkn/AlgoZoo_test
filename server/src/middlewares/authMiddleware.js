@@ -26,14 +26,8 @@ exports.isAuthenticatedUser = async (req, res, next) => {
       if (!user) {
         return res.status(404).json({ message: 'User not found with the provided token' })
       }
-
-      // check if user is logged in
-      if (user.status === 'login') {
-        req.user = user;
-        next();
-      } else {
-        return res.status(401).json({ message: 'Unauthorized access. Please login to continue' });
-      }
+      req.user = user;
+      next(); 
     });
   } catch (error) {
     console.error(error);
@@ -112,7 +106,7 @@ exports.verifyTrainer = async (req, res, next) => {
     if (user.role === 'trainer') {
       return next(); // Proceed if the user is a trainer
     } else {
-      return res.status(403).json({ message: 'Access denied. Only admin can access.' });
+      return res.status(403).json({ message: 'Access denied. Only trainer can access.' });
     }
   } catch (error) {
     console.error(error);
