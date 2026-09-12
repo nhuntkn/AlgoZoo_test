@@ -80,18 +80,18 @@ exports.verifyAdmin = async (req, res, next) => {
 
     // Check if user exists
     if (!user) {
-      return res.status(404).json({ message: 'Sorry, User does not exist' });
+      return res.status(404).json({ status: 'error', message: 'Sorry, User does not exist' });
     }
 
     // Check if user has admin privileges
     if (user.role === 'admin') {
       return next(); // Proceed if the user is an admin
     } else {
-      return res.status(403).json({ message: 'Access denied. Only admin can access.' });
+      return res.status(403).json({ status: 'error', message: 'Access denied. Only admin can access.' });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'SERVER SIDE ERROR' });
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
 
@@ -103,17 +103,17 @@ exports.verifyTrainer = async (req, res, next) => {
 
     // Check if user exists
     if (!user) {
-      return res.status(404).json({ message: 'Sorry, User does not exist' });
+      return res.status(404).json({ status: 'error', message: 'Sorry, User does not exist' });
     }
 
     // Check if user has trainer privileges
     if (user.role === 'trainer') {
       return next(); // Proceed if the user is a trainer
     } else {
-      return res.status(403).json({ message: 'Access denied. Only trainer can access.' });
+      return res.status(403).json({ status: 'error', message: 'Access denied. Only trainer can access.' });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'SERVER SIDE ERROR' });
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
