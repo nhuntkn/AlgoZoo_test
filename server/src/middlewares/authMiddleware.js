@@ -9,7 +9,7 @@ exports.isAuthenticatedUser = async (req, res, next) => {
     const { authorization } = req.headers;
 
     if (!authorization) {
-      return res.status(403).json({ message: 'Authorization headers are required with Bearer token' });
+      return res.status(403).json({ status: 'error', message: 'Authorization headers are required with Bearer token' });
     }
     // split token from authorization header
     const accesstoken = authorization.split(' ')[1];
@@ -17,21 +17,25 @@ exports.isAuthenticatedUser = async (req, res, next) => {
     // verify token
     jwt.verify(accesstoken, JWT_SECRET_KEY, async (err, dec) => {
       if (err) {
-        return res.status(401).json({ message: 'JWT access token is expired or invalid. Please logout and login again' })
+        return res.status(401).json({ status: 'error', message: 'JWT access token is expired or invalid. Please logout and login again' })
       }
 
       // check if user exists
       const user = await User.findById(dec.id);
 
       if (!user) {
-        return res.status(404).json({ message: 'User not found with the provided token' })
+        return res.status(404).json({ status: 'error', message: 'User not found with the provided token' })
+      }
+      // Check if user is active
+      if (!user.isActive) {
+        return res.status(403).json({ status: 'error', message: 'User is not active. Please login to continue' });
       }
       req.user = user;
       next(); 
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'SERVER SIDE ERROR' });
+    res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
 
@@ -41,7 +45,7 @@ exports.isRefreshTokenValid = async (req, res, next) => {
     const { authorization } = req.headers;
 
     if (!authorization || !authorization.startsWith('Bearer ')) {
-      return res.status(403).json({ message: 'Authorization headers are required with Bearer token' });
+      return res.status(403).json({ status: 'error', message: 'Authorization headers are required with Bearer token' });
     }
 
     const token = authorization.split(' ')[1];
@@ -49,14 +53,14 @@ exports.isRefreshTokenValid = async (req, res, next) => {
     // Verify refresh token
     jwt.verify(token, JWT_REFRESH_TOKEN_SECRET_KEY, async (err, decoded) => {
       if (err) {
-        return res.status(401).json({ message: 'JWT refresh token is expired or invalid. Please logout and login again' });
+        return res.status(401).json({ status: 'error', message: 'JWT refresh token is expired or invalid. Please logout and login again' });
       }
 
       // Check if user exists
       const user = await User.findById(decoded.id);
 
       if (!user) {
-        return res.status(404).json({ message: 'User not found with the provided token' });
+        return res.status(404).json({ status: 'error', message: 'User not found with the provided token' });
       }
 
       req.user = user;  
@@ -64,7 +68,7 @@ exports.isRefreshTokenValid = async (req, res, next) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'SERVER SIDE ERROR' });
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
 
@@ -76,18 +80,18 @@ exports.verifyAdmin = async (req, res, next) => {
 
     // Check if user exists
     if (!user) {
-      return res.status(404).json({ message: 'Sorry, User does not exist' });
+      return res.status(404).json({ status: 'error', message: 'Sorry, User does not exist' });
     }
 
     // Check if user has admin privileges
     if (user.role === 'admin') {
       return next(); // Proceed if the user is an admin
     } else {
-      return res.status(403).json({ message: 'Access denied. Only admin can access.' });
+      return res.status(403).json({ status: 'error', message: 'Access denied. Only admin can access.' });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'SERVER SIDE ERROR' });
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
 
@@ -99,17 +103,17 @@ exports.verifyTrainer = async (req, res, next) => {
 
     // Check if user exists
     if (!user) {
-      return res.status(404).json({ message: 'Sorry, User does not exist' });
+      return res.status(404).json({ status: 'error', message: 'Sorry, User does not exist' });
     }
 
     // Check if user has trainer privileges
     if (user.role === 'trainer') {
       return next(); // Proceed if the user is a trainer
     } else {
-      return res.status(403).json({ message: 'Access denied. Only trainer can access.' });
+      return res.status(403).json({ status: 'error', message: 'Access denied. Only trainer can access.' });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'SERVER SIDE ERROR' });
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
