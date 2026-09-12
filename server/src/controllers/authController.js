@@ -74,7 +74,7 @@ exports.register = async (req, res) => {
         const trimmedUsername = username.trim();
         const formattedEmail = email ? email.trim().toLowerCase() : null;
 
-        let user = await User.findOne({ username: trimmedUsername }).select('+passwordHash').session(session);
+        let user = await User.findOne({ username: trimmedUsername }).select('+password').session(session);
 
         if (!user && formattedEmail) {
             //Check if email belong to another existing account
@@ -91,7 +91,7 @@ exports.register = async (req, res) => {
 
         if (user) {
             //Existing User: Verify password to authorize joining the new class
-            const isMatch = await bcrypt.compare(password, user.passwordHash);
+            const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 await session.abortTransaction();
                 session.endSession();
@@ -125,15 +125,12 @@ exports.register = async (req, res) => {
                     message: 'Name is required for new registration',
                 });
             }
-
-            const salt = await bcrypt.genSalt(10);
-            const passwordHash = await bcrypt.hash(password, salt); 
-            
+     
             //Pass session into create() using array syntax
             const [newUser] = await User.create([{
                 name: name.trim(),
                 username: username.trim(),
-                passwordHash,
+                password: password,
                 email: email ? email.trim().toLowerCase() : undefined,
                 role: role,
                 isActive: true,
@@ -213,14 +210,14 @@ exports.loginUser = async (req, res) => {
                 status: 'error', 
                 message: 'Username and password are required' });
         }
-        const user = await User.findOne({ username: username.trim() }).select('+passwordHash');
+        const user = await User.findOne({ username: username.trim() }).select('+password');
         if (!user) {
         return res.status(404).json({ 
             status: 'error', 
             message: 'User does not exist' });
         }
 
-        const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) {
             return res.status(401).json({ 
                 status: 'error', 
