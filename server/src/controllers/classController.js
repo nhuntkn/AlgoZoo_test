@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const Class = require('../models/class');
-const {CLIENT_URL} = require('../config/env');
+const {APP_BASE_URL} = require('../config/env');
 
 /**
  * Generate ir refresh a join/invite link for a class
@@ -45,7 +45,7 @@ exports.generateJoinLink = async (req, res) => {
         await classDoc.save();
 
         //5. Build full invitation URL
-        const joinUrl = `${CLIENT_URL}/register?token=${token}`;
+        const joinUrl = `${APP_BASE_URL}/register?token=${token}`;
 
         return res.status(200).json({
             status: 'success',

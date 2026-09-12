@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const classController = require('../controllers/classController');
-const { protect, authorize } = require('../middlewares/authMiddleWare');
+const { isAuthenticatedUser, verifyAdmin } = require('../middlewares/authMiddleware');
 
 router.post(
   '/:classId/generate-join-link',
-  protect,
-  authorize('admin'),
+  isAuthenticatedUser,
+  verifyAdmin,
   classController.generateJoinLink
 );
 
