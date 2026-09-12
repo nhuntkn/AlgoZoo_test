@@ -1,6 +1,6 @@
 const { JWT_TOKEN_COOKIE_EXPIRES } = require('../config/env');
-const { loginResponse } = require('../ultils/response');
-const {generateAccessToken} = require('../ultils/jwt');
+const { loginResponse } = require('../utils/response');
+const {generateAccessToken, generateRefreshToken} = require('../utils/jwt');
 const User = require('../models/user');
 const Class = require('../models/class');
 const ClassMember = require('../models/classMember');
@@ -63,7 +63,7 @@ exports.register = async (req, res) => {
             session.endSession();
             return res.status(400).json({
                 status: 'error',
-                message: 'Invitation link is invalid, expired, or class in inactive',
+                message: 'Invitation link is invalid, expired, or class is inactive',
             });
         }
         
@@ -82,7 +82,7 @@ exports.register = async (req, res) => {
             if (emailUser) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({
+                return res.status(409).json({
                     status: 'error',
                     message: 'Email address is already signed up by another account',
                 });
@@ -110,13 +110,13 @@ exports.register = async (req, res) => {
             if (existingEnrollment) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({
+                return res.status(409).json({
                     status: 'error',
                     message: 'You are already enrolled in this class',
                 });
             }
         } else {
-            //New User: Validate name, password and create account
+            //New User: Validate name and create account
             if (!name || !name.trim()) {
                 await session.abortTransaction();
                 session.endSession();
@@ -135,7 +135,7 @@ exports.register = async (req, res) => {
                 username: username.trim(),
                 passwordHash,
                 email: email ? email.trim().toLowerCase() : undefined,
-                role: role || 'student',
+                role: role,
                 isActive: true,
             }],
             { session });
@@ -154,19 +154,28 @@ exports.register = async (req, res) => {
         await session.commitTransaction();
         session.endSession();
 
-        // 8. Return success response
+        // 8. Generate JWT Tokens upon successful registration
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
+
+        // 9. Return success response
         return res.status(201).json({
             status: 'success',
             message: 'Successfully enrolled in class',
             data: {
-                id: user._id,
-                name: user.name,
-                username: user.username,
-                role: user.role,
-                classId: classDoc._id,
-                isActive: user.isActive,
-                createdAt: user.createdAt,
-                updatedAt: user.updatedAt
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role,
+                    classId: classDoc._id,
+                    isActive: user.isActive,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
+                },
+                accessToken,
+                refreshToken,
             },
         });
     } catch (error) {
@@ -178,7 +187,7 @@ exports.register = async (req, res) => {
         //Handle MongoDB duplicate key errors (code 11000)
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern || {})[0] || 'field';
-            return res.status(400).json({
+            return res.status(409).json({
                 status: 'error',
                 message: `An account with this ${field} already exists`,
             });
@@ -187,7 +196,6 @@ exports.register = async (req, res) => {
         return res.status(500).json({
             status: 'error',
             message: 'SERVER SIDE ERROR',
-            error: error.message
         });
     }
 };
@@ -219,7 +227,7 @@ exports.loginUser = async (req, res) => {
                 message: 'User password is incorrect' });
         }
 
-        loginResponse(res, user);
+        return loginResponse(res, user);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
@@ -276,6 +284,7 @@ exports.refreshToken = async (req, res) => {
     res.cookie('accessToken', accessToken, options);
     return res.status(200).json({ status: 'success', message: 'JWT refresh token generated successfully' });
   } catch (error) {
+    console.error('Refresh Token Error:', error);
     return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
