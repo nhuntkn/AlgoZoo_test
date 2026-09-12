@@ -3,6 +3,8 @@ const app = require('../src/app/index');
 const { APP_PORT } = require('../src/config/env');
 const fileRoutes = require("./routes/fileRoutes");
 
+
+// middleware for uploading files
 app.use("/api/files", fileRoutes);
 
 // Global error handling middleware
