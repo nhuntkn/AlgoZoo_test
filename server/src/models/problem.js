@@ -19,9 +19,9 @@ const ProblemSchema = new mongoose.Schema(
       enum: ['OS', 'DB', 'DSA', 'OTHER'],
     },
     difficulty: {
-      required: [true, 'Difficulty is required'],
       type: String,
       enum: ['Easy', 'Medium', 'Hard'],
+      default: null,
     },
     createdBy: {
       required: [true, 'Author (created_by) is required'],
