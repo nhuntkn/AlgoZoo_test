@@ -2,113 +2,244 @@ const { JWT_TOKEN_COOKIE_EXPIRES } = require('../config/env');
 const { loginResponse } = require('../ultils/response');
 const {generateAccessToken} = require('../ultils/jwt');
 const User = require('../models/user');
+const Class = require('../models/class');
+const ClassMember = require('../models/classMember');
 const validateEmail = require('../validators/emailFormat');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 
-//TODO: Controller for register user
+/** Register User via Admin Invitation Link (Token-based)
+ *  POST /routes/auth/register
+ */ 
 exports.register = async (req, res) => {
-  try { 
-        const {username, password, role, name, email} = req.body; 
+    //Start a Mongoose Session for Atomic Operations
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try { 
+        const {token, username, password, name, email} = req.body; 
+
         // 1. Validate required fields 
-        if (!username || !password) {
+        if (!token || !username || !password) {
+            await session.endSession();
             return res.status(400).json({ 
                 status: 'error',
-                message: 'Username and password are required' }); 
+                message: 'Token, username and password are required' }); 
             }
+
         // 2. Validate email format 
-        if (!validateEmail(email)) { 
+        if (email && !validateEmail(email)) { 
+            await session.endSession();
             return res.status(400).json({ 
                 status: 'error',
                 message: 'Please provide a valid email address' }); 
             }
+
         // 3. Validate password length
         if (password.length < 6) {
+            await session.endSession();
             return res.status(400).json({ 
                 status: 'error',
                 message: 'Password must be at least 6 characters' }); 
             }
-        // 4. Validate role 
-        if (role && !['student', 'trainer'].includes(role)) {
-            return res.status(400).json({ 
+
+        // 4. Find Class matching the token & verify 2-day expiration date limit
+        const classDoc = await Class.findOne({
+            $or: [
+                {
+                    studentJoinToken: token,
+                    studentJoinTokenExpiresAt: { $gt: new Date() },
+                },
+                {
+                    trainerInviteToken: token,
+                    trainerInviteTokenExpiresAt: { $gt: new Date() },
+                },
+            ],
+            isActive: true,
+        }).session(session);
+
+        if (!classDoc) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
                 status: 'error',
-                message: 'Invalid role. Allowed roles are student, trainer' }); 
+                message: 'Invitation link is invalid, expired, or class in inactive',
+            });
+        }
+        
+        // 5. Automatically get role from token match
+        const role = token === classDoc.studentJoinToken ? 'student' : 'trainer';
+
+        // 6. Check if user already exists
+        const trimmedUsername = username.trim();
+        const formattedEmail = email ? email.trim().toLowerCase() : null;
+
+        let user = await User.findOne({ username: trimmedUsername }).select('+passwordHash').session(session);
+
+        if (!user && formattedEmail) {
+            //Check if email belong to another existing account
+            const emailUser = await User.findOne({ email: formattedEmail }).session(session);
+            if (emailUser) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Email address is already signed up by another account',
+                });
             }
-        // 5. Check if username already exists
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(400).json({ 
-                status: 'error',
-                message: 'Username already exists' }); 
+        }
+
+        if (user) {
+            //Existing User: Verify password to authorize joining the new class
+            const isMatch = await bcrypt.compare(password, user.passwordHash);
+            if (!isMatch) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(401).json({
+                    status: 'error',
+                    message: 'Incorrect password for existing account',
+                });
             }
-        // 6. Create the user
-        const user = await User.create({
-            name: name,
-            username: username.trim(),
-            password: password,
-            email: email ? email.trim() : undefined,
-            role: role || 'student'
-        });
-        // 7. Return success response
-        res.status(201).json({
+
+            //Check if user is already in this specific class
+            const existingEnrollment = await ClassMember.findOne({
+                classId: classDoc._id,
+                userId: user._id,
+            }).session(session);
+
+            if (existingEnrollment) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'You are already enrolled in this class',
+                });
+            }
+        } else {
+            //New User: Validate name, password and create account
+            if (!name || !name.trim()) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Name is required for new registration',
+                });
+            }
+
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(password, salt); 
+            
+            //Pass session into create() using array syntax
+            const [newUser] = await User.create([{
+                name: name.trim(),
+                username: username.trim(),
+                passwordHash,
+                email: email ? email.trim().toLowerCase() : undefined,
+                role: role || 'student',
+                isActive: true,
+            }],
+            { session });
+            user = newUser;
+        }
+
+        // 7. Enroll New User in ClassMember
+        await ClassMember.create([{
+            classId: classDoc._id,
+            userId: user._id,
+            role,
+        }],
+        { session });
+
+        //Commit changes to the database
+        await session.commitTransaction();
+        session.endSession();
+
+        // 8. Return success response
+        return res.status(201).json({
             status: 'success',
-            message: 'User created successfully',
+            message: 'Successfully enrolled in class',
             data: {
                 id: user._id,
                 name: user.name,
                 username: user.username,
                 role: user.role,
+                classId: classDoc._id,
                 isActive: user.isActive,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt
-            }
+            },
         });
     } catch (error) {
-      console.error(error);
-        res.status(500).json({
+        await session.abortTransaction();
+        session.endSession();
+
+        console.error(error);
+
+        //Handle MongoDB duplicate key errors (code 11000)
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern || {})[0] || 'field';
+            return res.status(400).json({
+                status: 'error',
+                message: `An account with this ${field} already exists`,
+            });
+        }
+
+        return res.status(500).json({
             status: 'error',
-            message: 'SERVER SIDE ERROr',
+            message: 'SERVER SIDE ERROR',
             error: error.message
         });
     }
 };
-// TODO: Controller for login 
+/** 
+ *  Controller for login 
+ *  POST /routes/auth/login
+ */ 
+
 exports.loginUser = async (req, res) => {
     try {
         const { username, password } = req.body;
         // validate username and password
         if (!username || !password) {
-            return res.status(400).json({ status: 'error', message: 'Username and password are required' });
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Username and password are required' });
         }
-        const user = await User.findOne({ username }).select('+password');
+        const user = await User.findOne({ username: username.trim() }).select('+passwordHash');
         if (!user) {
-        return res.status(404).json({ status: 'error', message: 'User does not exist' });
+        return res.status(404).json({ 
+            status: 'error', 
+            message: 'User does not exist' });
         }
 
-        const isPasswordMatch = await user.comparePassword(password);
+        const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isPasswordMatch) {
-        return res.status(400).json({ status: 'error', message: 'User password is incorrect' });
+            return res.status(401).json({ 
+                status: 'error', 
+                message: 'User password is incorrect' });
         }
 
-        const logUser = await User.findByIdAndUpdate(user._id, { isActive: true, updatedAt: Date.now() }, { new: true });
-        loginResponse(res, logUser);
+        loginResponse(res, user);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
     }
 };
 
-// TODO: Controller for logout
+/** 
+ * Controller for logout
+ * POST /routes/auth/logout
+ */
 exports.logoutUser = async (req, res) => {
   try {
     const { user } = req;
 
     if (!user) {
-      return res.status(404).json({ status: 'error', message: 'Unauthorized access. Please login to continue' });
+      return res.status(401).json({ status: 'error', message: 'Unauthorized access. Please login to continue' });
     }
 
     res.clearCookie('accessToken');
     res.clearCookie('refreshToken');
-    await User.findByIdAndUpdate(user._id, { isActive: false, updatedAt: Date.now() }, { new: true });
     
     return res.status(200).json({status: 'success', message: 'User logged out successfully' });
   } catch (error) {
@@ -117,7 +248,10 @@ exports.logoutUser = async (req, res) => {
   }
 };
 
-// TODO: Controller for user refresh-token
+/** 
+ * Controller for user refresh-token
+ * POST /routes/auth/refresh-token
+ */
 exports.refreshToken = async (req, res) => {
   try {
     const { user } = req;
