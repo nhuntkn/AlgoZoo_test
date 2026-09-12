@@ -2,7 +2,75 @@ const { JWT_TOKEN_COOKIE_EXPIRES } = require('../config/env');
 const { loginResponse } = require('../ultils/response');
 const {generateAccessToken} = require('../ultils/jwt');
 const User = require('../models/user');
+const validateEmail = require('../validators/emailFormat');
+const bcrypt = require('bcryptjs');
 
+//TODO: Controller for register user
+exports.register = async (req, res) => {
+  try { 
+        const {username, password, role, name, email} = req.body; 
+        // 1. Validate required fields 
+        if (!username || !password) {
+            return res.status(400).json({ 
+                status: 'error',
+                message: 'Username and password are required' }); 
+            }
+        // 2. Validate email format 
+        if (!validateEmail(email)) { 
+            return res.status(400).json({ 
+                status: 'error',
+                message: 'Please provide a valid email address' }); 
+            }
+        // 3. Validate password length
+        if (password.length < 6) {
+            return res.status(400).json({ 
+                status: 'error',
+                message: 'Password must be at least 6 characters' }); 
+            }
+        // 4. Validate role 
+        if (role && !['student', 'trainer'].includes(role)) {
+            return res.status(400).json({ 
+                status: 'error',
+                message: 'Invalid role. Allowed roles are student, trainer' }); 
+            }
+        // 5. Check if username already exists
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ 
+                status: 'error',
+                message: 'Username already exists' }); 
+            }
+        // 6. Create the user
+        const user = await User.create({
+            name: name,
+            username: username.trim(),
+            password: password,
+            email: email ? email.trim() : undefined,
+            role: role || 'student'
+        });
+        // 7. Return success response
+        res.status(201).json({
+            status: 'success',
+            message: 'User created successfully',
+            data: {
+                id: user._id,
+                name: user.name,
+                username: user.username,
+                role: user.role,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            }
+        });
+    } catch (error) {
+      console.error(error);
+        res.status(500).json({
+            status: 'error',
+            message: 'SERVER SIDE ERROr',
+            error: error.message
+        });
+    }
+};
 // TODO: Controller for login 
 exports.loginUser = async (req, res) => {
     try {
