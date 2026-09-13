@@ -1,5 +1,6 @@
-const { JWT_TOKEN_COOKIE_EXPIRES } = require('../config/env');
+const { JWT_ACCESS_TOKEN_EXPIRES,JWT_REFRESH_TOKEN_EXPIRES } = require('../config/env');
 const { loginResponse } = require('../utils/response');
+const { getDateAfterDuration } = require('../utils/date');
 const {generateAccessToken, generateRefreshToken} = require('../utils/jwt');
 const User = require('../models/user');
 const Class = require('../models/class');
@@ -17,14 +18,14 @@ exports.register = async (req, res) => {
     session.startTransaction();
 
     try { 
-        const {token, username, password, name, email} = req.body; 
-
+        const {token, fullname, email, password} = req.body; 
+            
         // 1. Validate required fields 
-        if (!token || !username || !password) {
+        if (!token || !fullname || !email || !password) {
             await session.endSession();
             return res.status(400).json({ 
                 status: 'error',
-                message: 'Token, username and password are required' }); 
+                message: 'Token, fullname, email and password are required' }); 
             }
 
         // 2. Validate email format 
@@ -70,11 +71,10 @@ exports.register = async (req, res) => {
         // 5. Automatically get role from token match
         const role = token === classDoc.studentJoinToken ? 'student' : 'trainer';
 
-        // 6. Check if user already exists
-        const trimmedUsername = username.trim();
+        // 6. Check if user already exists by email
         const formattedEmail = email ? email.trim().toLowerCase() : null;
 
-        let user = await User.findOne({ username: trimmedUsername }).select('+password').session(session);
+        let user = await User.findOne({ email: formattedEmail }).select('+password').session(session);
 
         if (!user && formattedEmail) {
             //Check if email belong to another existing account
@@ -116,20 +116,19 @@ exports.register = async (req, res) => {
                 });
             }
         } else {
-            //New User: Validate name and create account
-            if (!name || !name.trim()) {
+            //New User: Validate fullname and create account
+            if (!fullname || !fullname.trim()) {
                 await session.abortTransaction();
                 session.endSession();
                 return res.status(400).json({
                     status: 'error',
-                    message: 'Name is required for new registration',
+                    message: 'fullname is required for new registration',
                 });
             }
      
             //Pass session into create() using array syntax
             const [newUser] = await User.create([{
-                name: name.trim(),
-                username: username.trim(),
+                fullname: fullname.trim(),
                 password: password,
                 email: email ? email.trim().toLowerCase() : undefined,
                 role: role,
@@ -155,24 +154,37 @@ exports.register = async (req, res) => {
         const accessToken = generateAccessToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
+        const accessCookieOptions = {
+            expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
+            httpOnly: true,
+            sameSite: 'strict'
+        };
+        const refreshCookieOptions = {
+            expires: getDateAfterDuration(JWT_REFRESH_TOKEN_EXPIRES),
+            httpOnly: true,
+            sameSite: 'strict'
+        };
+        
+
         // 9. Return success response
-        return res.status(201).json({
+        return res.status(201)
+        .cookie('accessToken', accessToken, accessCookieOptions)
+        .cookie('refreshToken', refreshToken, refreshCookieOptions)
+        .json({
             status: 'success',
             message: 'Successfully enrolled in class',
             data: {
                 user: {
                     id: user._id,
-                    name: user.name,
-                    username: user.username,
+                    fullname: user.fullname,
                     email: user.email,
                     role: user.role,
-                    classId: classDoc._id,
                     isActive: user.isActive,
                     createdAt: user.createdAt,
-                    updatedAt: user.updatedAt
-                },
-                accessToken,
-                refreshToken,
+                    updatedAt: user.updatedAt,
+                    classId: classDoc._id,
+                    className: classDoc.name
+                }
             },
         });
     } catch (error) {
@@ -203,20 +215,27 @@ exports.register = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
     try {
-        const { username, password } = req.body;
-        // validate username and password
-        if (!username || !password) {
+        const { email, password } = req.body;
+        // validate email and password
+        if (!email || !password) {
             return res.status(400).json({ 
                 status: 'error', 
-                message: 'Username and password are required' });
+                message: 'Email and password are required' });
         }
-        const user = await User.findOne({ username: username.trim() }).select('+password');
+        // check if user exists
+        const user = await User.findOne({ email: email.trim() }).select('+password');
         if (!user) {
         return res.status(404).json({ 
             status: 'error', 
             message: 'User does not exist' });
         }
-
+        // check if user is active
+        if (!user.isActive) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'User is not active. Please contact administrator'
+            });
+        }
         const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) {
             return res.status(401).json({ 
@@ -274,7 +293,7 @@ exports.refreshToken = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
 
     const options = {
-      expires: new Date(Date.now() + JWT_TOKEN_COOKIE_EXPIRES * 24 * 60 * 60 * 1000),
+      expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
       httpOnly: true,
     };
 

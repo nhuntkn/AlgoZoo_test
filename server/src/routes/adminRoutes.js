@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const {isAuthenticatedUser, verifyAdmin} = require('../middlewares/authMiddleware');
-const {getUserWithRole,getUser, getUserById, createUser} = require('../controllers/adminController');
+const {getUserWithRole,getUser, getUserById } = require('../controllers/adminController');
 
 
 // route for admin to
