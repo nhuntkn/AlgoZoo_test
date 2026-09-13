@@ -9,6 +9,8 @@ const path = require('path');
 // imports application middleware and routes
 const authRoute = require('../routes/authRoutes');
 const adminRoute = require('../routes/adminRoutes');
+const trainerRoute = require('../routes/trainerRoutes');
+const problemRoute = require('../routes/problemRoutes');
 
 // initialize express app
 const app = express();
@@ -35,5 +37,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // sets application API's routes
 app.use('/api', authRoute); // auth routes
 app.use('/api', adminRoute); // admin routes
+app.use('/api', trainerRoute); // trainer routes
+app.use('/api', problemRoute); // problem bank routes
 
 module.exports=app
