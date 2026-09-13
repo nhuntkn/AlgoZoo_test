@@ -113,7 +113,7 @@ exports.getAllClasses = async (req, res) => {
 };
 
 // Controller for admin to update user's active status
-// PUT /api/admin/users/:user_id
+// PATCH /api/admin/users/:user_id
 exports.updateUserActive = async (req, res) => {
   try {
     const { user_id } = req.params;
@@ -192,7 +192,7 @@ exports.createClass = async (req, res) => {
 };
 
 // Controller for admin to update class details (name, description)
-// PUT /api/admin/classes/:class_id
+// PATCH /api/admin/classes/:class_id
 exports.updateClassDetails = async (req, res) => {
   try {
     const class_id = req.params.class_id?.trim();
@@ -249,7 +249,7 @@ exports.updateClassDetails = async (req, res) => {
 };
 
 // Controller for admin to update class active status
-// PUT /api/admin/classes/:class_id/active
+// PATCH /api/admin/classes/:class_id/active
 exports.updateClassActive = async (req, res) => {
   try {
     const class_id = req.params.class_id?.trim();
