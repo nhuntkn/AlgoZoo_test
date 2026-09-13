@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, Code2, ImageIcon, Paperclip, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { FileText, Code2, ImageIcon, Paperclip, ChevronLeft, ChevronRight, Check, Pencil } from 'lucide-react'
 import { Badge, TypeBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { useNotifications } from '../../context/NotificationContext'
 
 type ContentBlock =
   | { type: 'text'; content: string }
@@ -16,6 +17,12 @@ const submission = {
   initials: 'AN',
   problem: 'Two Sum',
   problemType: 'DSA' as const,
+  problemDescription: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.',
+  problemConstraints: ['2 ≤ nums.length ≤ 10⁴', '-10⁹ ≤ nums[i] ≤ 10⁹', 'Only one valid answer exists'],
+  problemExamples: [
+    { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' },
+    { input: 'nums = [3,2,4], target = 6', output: '[1,2]' },
+  ],
   problemResourceUrl: 'https://leetcode.com/problems/two-sum/',
   class: 'WeCamp Batch 21',
   classId: '1',
@@ -129,21 +136,8 @@ function BlockView({ block }: { block: ContentBlock }) {
 export function ReviewSubmission() {
   const [feedback, setFeedback] = useState('')
   const [done, setDone] = useState(false)
-
-  if (done) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-          <Check size={28} className="text-green-600" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Submission Reviewed</h2>
-        <p className="text-gray-500 mb-6">Your feedback has been saved and the student has been notified.</p>
-        <Link to={`/trainer/classes/${submission.classId}/submissions`}>
-          <Button>Back to Submissions</Button>
-        </Link>
-      </div>
-    )
-  }
+  const [isEditing, setIsEditing] = useState(true)
+  const { addNotification } = useNotifications()
 
   return (
     <div>
@@ -180,15 +174,74 @@ export function ReviewSubmission() {
         </div>
         <div className="flex items-center gap-2">
           <TypeBadge type={submission.problemType} />
-          <Badge variant="pending">Pending</Badge>
+          {done ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-green-100 text-green-700">
+              <Check size={11} /> Reviewed
+            </span>
+          ) : (
+            <Badge variant="pending">Pending</Badge>
+          )}
           {submission.isLate && <Badge variant="late">Late</Badge>}
         </div>
       </div>
 
       {/* Two-column layout: solution left, feedback right */}
       <div className="flex gap-5 items-start">
-        {/* LEFT: all content blocks */}
+        {/* LEFT: problem description + content blocks */}
         <div className="flex-1 min-w-0 space-y-3">
+          {/* Problem description card */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <FileText size={13} className="text-gray-400" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Problem</span>
+              <span className="ml-1 text-xs font-bold text-gray-700">{submission.problem}</span>
+              <div className="ml-auto flex items-center">
+                <TypeBadge type={submission.problemType} />
+              </div>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{submission.problemDescription}</p>
+              {submission.problemConstraints.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1.5">Constraints</p>
+                  <ul className="space-y-1">
+                    {submission.problemConstraints.map((c, i) => (
+                      <li key={i} className="text-xs text-gray-600 flex gap-2">
+                        <span className="text-gray-300 flex-shrink-0">•</span>{c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {submission.problemExamples.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1.5">Examples</p>
+                  <div className="space-y-1.5">
+                    {submission.problemExamples.map((ex, i) => (
+                      <div key={i} className="bg-gray-50 rounded-xl px-3 py-2 text-xs font-mono">
+                        <p className="text-gray-500">Input: <span className="text-gray-800">{ex.input}</span></p>
+                        <p className="text-gray-500">Output: <span className="text-gray-800">{ex.output}</span></p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {submission.problemResourceUrl && (
+                <a href={submission.problemResourceUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                  View on LeetCode →
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Student submission blocks */}
+          <div className="flex items-center gap-2 px-1">
+            <div className="w-7 h-7 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+              {submission.initials}
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Student's Submission</span>
+          </div>
           {submission.contentBlocks.map((block, i) => (
             <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <BlockView block={block} />
@@ -207,7 +260,11 @@ export function ReviewSubmission() {
             <InfoRow label="Submitted" value={submission.submittedAt} />
             <InfoRow
               label="Status"
-              value={<Badge variant="pending">Pending</Badge>}
+              value={
+                done
+                  ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700"><Check size={11} /> Reviewed</span>
+                  : <Badge variant="pending">Pending</Badge>
+              }
             />
             {submission.problemResourceUrl && (
               <div>
@@ -226,24 +283,77 @@ export function ReviewSubmission() {
 
           {/* Feedback */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <h3 className="font-semibold text-gray-800 text-sm">Feedback</h3>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={10}
-              placeholder={`Write feedback for ${submission.student}…\n\nExamples:\n- Great approach using hash map\n- Check edge case: empty array\n- Clean, readable code`}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-accent/60 resize-none"
-            />
-            <Button
-              variant="success"
-              className="w-full justify-center"
-              onClick={() => setDone(true)}
-            >
-              Mark as Reviewed
-            </Button>
-            <p className="text-xs text-center text-gray-400">
-              Student sees feedback after you mark as reviewed.
-            </p>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 text-sm">Feedback</h3>
+              {done && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-1 text-xs text-accent font-semibold hover:underline"
+                >
+                  <Pencil size={11} /> Edit
+                </button>
+              )}
+            </div>
+
+            {done && !isEditing ? (
+              /* Read-only feedback display */
+              <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed whitespace-pre-line min-h-[80px]">
+                {feedback || <span className="text-gray-400 italic">No feedback written.</span>}
+              </div>
+            ) : (
+              /* Editable textarea */
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={10}
+                placeholder={`Write feedback for ${submission.student}…\n\nExamples:\n- Great approach using hash map\n- Check edge case: empty array\n- Clean, readable code`}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-accent/60 resize-none"
+              />
+            )}
+
+            {done && !isEditing ? null : done && isEditing ? (
+              <>
+                <Button
+                  variant="success"
+                  className="w-full justify-center"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Save Changes
+                </Button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="w-full text-xs text-center text-gray-400 hover:text-gray-600"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="success"
+                  className="w-full justify-center"
+                  onClick={() => {
+                    setDone(true)
+                    setIsEditing(false)
+                    addNotification({
+                      recipientRole: 'student',
+                      type: 'GRADE_RELEASED',
+                      title: 'Submission graded',
+                      message: `Your submission for ${submission.problem} has been graded.`,
+                      context: `${submission.class} · ${submission.problemType}`,
+                      entityType: 'submission',
+                      entityId: String(submission.id),
+                      linkTo: `/student/submissions/${submission.id}`,
+                    })
+                  }}
+                >
+                  Mark as Reviewed
+                </Button>
+                <p className="text-xs text-center text-gray-400">
+                  Student sees feedback after you mark as reviewed.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

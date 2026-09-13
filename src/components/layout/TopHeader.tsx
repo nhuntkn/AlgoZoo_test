@@ -1,8 +1,14 @@
+import { useState } from 'react'
 import { Bell, Search } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
+import { NotificationDropdown } from '../ui/NotificationDropdown'
 
 export function TopHeader() {
   const { user } = useAuth()
+  const { getUnreadCount } = useNotifications()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const unread = getUnreadCount(user.role)
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10 flex-shrink-0">
@@ -16,10 +22,24 @@ export function TopHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
-          <Bell size={18} className="text-gray-500" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-        </button>
+        {/* Notification bell */}
+        <div className="relative">
+          <button
+            onClick={() => setDropdownOpen((v) => !v)}
+            className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+            aria-label="Notifications"
+          >
+            <Bell size={18} className="text-gray-500" />
+            {unread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] flex items-center justify-center bg-accent text-white text-[10px] font-bold rounded-full px-1 leading-none">
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
+          </button>
+          {dropdownOpen && (
+            <NotificationDropdown onClose={() => setDropdownOpen(false)} />
+          )}
+        </div>
 
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

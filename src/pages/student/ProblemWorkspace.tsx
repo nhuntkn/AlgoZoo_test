@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { useNotifications } from '../../context/NotificationContext'
 
 const problemData: Record<string, {
   title: string; type: string; difficulty: 'Easy' | 'Medium' | 'Hard';
@@ -81,6 +82,7 @@ export function ProblemWorkspace() {
   const navigate = useNavigate()
   const problem = problemData[problemId] ?? problemData['1']
   const className = 'WeCamp Batch 22'
+  const { addNotification } = useNotifications()
 
   const [tab, setTab] = useState<WorkspaceTab>('description')
   const [blocks, setBlocks] = useState<Block[]>([])
@@ -131,6 +133,47 @@ export function ProblemWorkspace() {
 
   const handleSubmit = () => {
     setSubmitted(true)
+
+    const notifContext = `${className} · ${problem.type}`
+    const submissionId = problemId  // mock: submission id = problem id
+
+    // Notify trainer: new submission (or late submission)
+    if (problem.isPastDeadline) {
+      addNotification({
+        recipientRole: 'trainer',
+        type: 'SUBMISSION_LATE',
+        title: 'Late submission',
+        message: `Juliana Silva submitted ${problem.title} after the deadline`,
+        context: notifContext,
+        entityType: 'submission',
+        entityId: submissionId,
+        linkTo: `/trainer/submissions/${submissionId}`,
+      })
+    } else {
+      addNotification({
+        recipientRole: 'trainer',
+        type: 'SUBMISSION_CREATED',
+        title: 'New submission',
+        message: `Juliana Silva submitted ${problem.title}`,
+        context: notifContext,
+        entityType: 'submission',
+        entityId: submissionId,
+        linkTo: `/trainer/submissions/${submissionId}`,
+      })
+    }
+
+    // Notify student: submission successful
+    addNotification({
+      recipientRole: 'student',
+      type: 'SUBMISSION_SUCCESS',
+      title: 'Submission successful',
+      message: `Your submission for ${problem.title} was submitted successfully.`,
+      context: notifContext,
+      entityType: 'submission',
+      entityId: submissionId,
+      linkTo: `/student/submissions/${submissionId}`,
+    })
+
     navigate(`/student/submissions`)
   }
 

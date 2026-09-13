@@ -1,12 +1,11 @@
-import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Copy, Check, Users, BookOpen, Clock, CheckCircle } from 'lucide-react'
+import { Users, BookOpen, Clock, CheckCircle } from 'lucide-react'
 import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { StatCard } from '../../../components/ui/StatCard'
 
-const classData: Record<string, { name: string; description: string; status: 'ACTIVE' | 'INACTIVE'; studentToken: string; trainerToken: string }> = {
-  '1': { name: 'WeCamp Batch 21', description: 'NAB WeCamp Batch 21 — DSA Training Program', status: 'ACTIVE', studentToken: '8f3k2mxp9qlz', trainerToken: 'tr7n4vw1yabs' },
-  '2': { name: 'WeCamp Batch 22', description: 'NAB WeCamp Batch 22 — DSA Training Program', status: 'ACTIVE', studentToken: 'b9x1qzpl3mwn', trainerToken: 'vk2r5uf8ncds' },
+const classData: Record<string, { name: string; description: string; status: 'ACTIVE' | 'INACTIVE' }> = {
+  '1': { name: 'WeCamp Batch 21', description: 'NAB WeCamp Batch 21 — DSA Training Program', status: 'ACTIVE' },
+  '2': { name: 'WeCamp Batch 22', description: 'NAB WeCamp Batch 22 — DSA Training Program', status: 'ACTIVE' },
 }
 
 const activity = [
@@ -20,22 +19,6 @@ const activity = [
 export function ClassOverview() {
   const { classId = '1' } = useParams()
   const cls = classData[classId] ?? classData['1']
-  const [copiedStudent, setCopiedStudent] = useState(false)
-  const [copiedTrainer, setCopiedTrainer] = useState(false)
-
-  const studentLink = `https://algozoo.com/join/student/${cls.studentToken}`
-  const trainerLink = `https://algozoo.com/join/trainer/${cls.trainerToken}`
-
-  const copyLink = (link: string, type: 'student' | 'trainer') => {
-    navigator.clipboard.writeText(link).catch(() => {})
-    if (type === 'student') {
-      setCopiedStudent(true)
-      setTimeout(() => setCopiedStudent(false), 2000)
-    } else {
-      setCopiedTrainer(true)
-      setTimeout(() => setCopiedTrainer(false), 2000)
-    }
-  }
 
   const tabs = [
     { label: 'Overview', to: `/trainer/classes/${classId}/overview` },
@@ -69,32 +52,6 @@ export function ClassOverview() {
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Description</p>
             <p className="text-sm text-gray-600">{cls.description}</p>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Student Join Link</p>
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-              <span className="text-xs text-gray-600 font-mono truncate flex-1">{studentLink}</span>
-              <button
-                onClick={() => copyLink(studentLink, 'student')}
-                className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent-hover"
-              >
-                {copiedStudent ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Trainer Invite Link</p>
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-              <span className="text-xs text-gray-600 font-mono truncate flex-1">{trainerLink}</span>
-              <button
-                onClick={() => copyLink(trainerLink, 'trainer')}
-                className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent-hover"
-              >
-                {copiedTrainer ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
-              </button>
-            </div>
           </div>
 
           <div className="flex gap-6">

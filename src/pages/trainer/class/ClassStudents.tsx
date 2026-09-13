@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Search, UserMinus } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { ProgressBar } from '../../../components/ui/ProgressBar'
 
@@ -31,7 +31,7 @@ const initialStudents: Student[] = [
 export function ClassStudents() {
   const { classId = '1' } = useParams()
   const className = classNames[classId] ?? 'WeCamp Batch 21'
-  const [students, setStudents] = useState(initialStudents)
+  const [students] = useState(initialStudents)
   const [search, setSearch] = useState('')
 
   const tabs = [
@@ -71,8 +71,8 @@ export function ClassStudents() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-[1fr_190px_90px_1fr_110px] px-6 py-3 border-b border-gray-100">
-          {['STUDENT', 'EMAIL', 'JOINED', 'PROGRESS', 'ACTION'].map((h) => (
+        <div className="grid grid-cols-[1fr_190px_90px_1fr] px-6 py-3 border-b border-gray-100">
+          {['STUDENT', 'EMAIL', 'JOINED', 'PROGRESS'].map((h) => (
             <span key={h} className="text-[10px] font-bold text-gray-400 tracking-widest">{h}</span>
           ))}
         </div>
@@ -81,7 +81,7 @@ export function ClassStudents() {
           return (
             <div
               key={s.id}
-              className={`grid grid-cols-[1fr_190px_90px_1fr_110px] items-center px-6 py-4 hover:bg-gray-50 ${
+              className={`grid grid-cols-[1fr_190px_90px_1fr] items-center px-6 py-4 hover:bg-gray-50 ${
                 i < filtered.length - 1 ? 'border-b border-gray-50' : ''
               }`}
             >
@@ -99,14 +99,6 @@ export function ClassStudents() {
                   <span className="text-xs text-gray-600 font-medium">{pct}%</span>
                 </div>
                 <ProgressBar value={pct} />
-              </div>
-              <div>
-                <button
-                  onClick={() => setStudents((prev) => prev.filter((x) => x.id !== s.id))}
-                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
-                >
-                  <UserMinus size={14} /> Remove
-                </button>
               </div>
             </div>
           )

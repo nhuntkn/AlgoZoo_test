@@ -37,7 +37,7 @@ export function ClassSubmissions() {
   const [searchParams, setSearchParams] = useSearchParams()
   const className = classNames[classId] ?? 'WeCamp Batch 21'
 
-  const [tab, setTab] = useState<'all' | 'pending' | 'reviewed'>('all')
+  const [tab, setTab] = useState<'all' | 'pending' | 'reviewed' | 'late'>('all')
   const [search, setSearch] = useState('')
 
   const problemFilter = searchParams.get('problem') ?? ''
@@ -55,7 +55,11 @@ export function ClassSubmissions() {
   const filtered = [...submissions]
     .sort((a, b) => a.sortTs - b.sortTs)
     .filter((s) => {
-      const matchTab = tab === 'all' ? true : tab === 'pending' ? s.status === 'PENDING' : s.status === 'REVIEWED'
+      const matchTab =
+        tab === 'all' ? true :
+        tab === 'pending' ? (s.status === 'PENDING' && !s.isLate) :
+        tab === 'reviewed' ? s.status === 'REVIEWED' :
+        s.isLate
       const matchSearch = search === '' || s.student.toLowerCase().includes(search.toLowerCase()) || s.problem.toLowerCase().includes(search.toLowerCase())
       const matchProblem = problemFilter === '' || s.problem === problemFilter
       const matchTopic = topicFilter === '' || s.topic === topicFilter
@@ -106,15 +110,22 @@ export function ClassSubmissions() {
       {/* Filters */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex gap-1">
-          {(['all', 'pending', 'reviewed'] as const).map((t) => (
+          {([
+            { key: 'all', label: `All (${submissions.length})` },
+            { key: 'pending', label: `Pending (${submissions.filter(s => s.status === 'PENDING' && !s.isLate).length})` },
+            { key: 'reviewed', label: `Reviewed (${submissions.filter(s => s.status === 'REVIEWED').length})` },
+            { key: 'late', label: `Late (${submissions.filter(s => s.isLate).length})` },
+          ] as const).map(({ key, label }) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition-colors ${
-                tab === t ? 'bg-accent text-white' : 'bg-white text-gray-500 hover:bg-gray-50 shadow-sm'
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                tab === key
+                  ? key === 'late' ? 'bg-orange-500 text-white' : 'bg-accent text-white'
+                  : key === 'late' ? 'bg-white text-orange-500 hover:bg-orange-50 shadow-sm' : 'bg-white text-gray-500 hover:bg-gray-50 shadow-sm'
               }`}
             >
-              {t === 'all' ? `All (${filtered.length})` : t === 'pending' ? 'Pending' : 'Reviewed'}
+              {label}
             </button>
           ))}
         </div>

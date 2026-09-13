@@ -1,32 +1,91 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, X, CheckCircle2, ChevronLeft } from 'lucide-react'
-import { TypeBadge } from '../../components/ui/Badge'
+import { Search, Plus, X, ChevronLeft, Pencil, Trash2, ExternalLink, Paperclip } from 'lucide-react'
+import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-
-type ProblemType = 'DSA' | 'OS' | 'Database' | 'Other'
+import { ProblemComposer } from '../../components/ui/ProblemComposer'
+import type { ProblemType, Difficulty, Resource, ProblemDraft } from '../../components/ui/ProblemComposer'
 
 type Problem = {
   id: number
   title: string
   type: ProblemType
+  difficulty: Difficulty
   description: string
-  resource_url: string
+  resources: Resource[]
+  // kept for CreateAssignment.tsx compatibility
+  topic?: string
+  resource_url?: string
 }
 
 export const problemBank: Problem[] = [
-  { id: 1, title: 'Two Sum', type: 'DSA', description: 'Given an array of integers and a target, return indices of the two numbers that add up to the target.', resource_url: 'https://leetcode.com/problems/two-sum/' },
-  { id: 2, title: 'Binary Search', type: 'DSA', description: 'Implement binary search on a sorted array.', resource_url: 'https://leetcode.com/problems/binary-search/' },
-  { id: 3, title: 'Reverse Linked List', type: 'DSA', description: 'Reverse a singly linked list.', resource_url: 'https://leetcode.com/problems/reverse-linked-list/' },
-  { id: 4, title: 'Binary Tree Level Order Traversal', type: 'DSA', description: 'Return the level order traversal of a binary tree\'s nodes.', resource_url: 'https://leetcode.com/problems/binary-tree-level-order-traversal/' },
-  { id: 5, title: 'Course Schedule', type: 'DSA', description: 'Determine if you can finish all courses given prerequisites.', resource_url: 'https://leetcode.com/problems/course-schedule/' },
-  { id: 6, title: 'Process Scheduling', type: 'OS', description: 'Implement and compare FCFS, SJF, and Round Robin scheduling algorithms.', resource_url: '' },
-  { id: 7, title: 'Memory Management', type: 'OS', description: 'Understand paging and segmentation concepts in OS memory management.', resource_url: '' },
-  { id: 8, title: 'Deadlock Detection', type: 'OS', description: 'Implement Banker\'s algorithm for deadlock avoidance.', resource_url: '' },
-  { id: 9, title: 'SQL Queries', type: 'Database', description: 'Write SQL queries to solve common database problems using SELECT, JOIN, and aggregation.', resource_url: '' },
-  { id: 10, title: 'Joins & Aggregations', type: 'Database', description: 'Practice complex JOIN operations and aggregation functions in SQL.', resource_url: '' },
-  { id: 11, title: 'Database Normalization', type: 'Database', description: 'Normalize a given database schema to 3NF.', resource_url: '' },
+  {
+    id: 1, title: 'Two Sum', type: 'DSA', difficulty: 'easy', topic: 'DSA', resource_url: 'https://leetcode.com/problems/two-sum/',
+    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nExample:\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\n\nConstraints:\n• 2 ≤ nums.length ≤ 10⁴\n• -10⁹ ≤ nums[i] ≤ 10⁹\n• Only one valid answer exists',
+    resources: [{ id: 1, label: 'LeetCode', url: 'https://leetcode.com/problems/two-sum/' }],
+  },
+  {
+    id: 2, title: 'Binary Search', type: 'DSA', difficulty: 'easy', topic: 'DSA', resource_url: 'https://leetcode.com/problems/binary-search/',
+    description: 'Given an array of integers nums which is sorted in ascending order, and an integer target, write a function to search target in nums. If target exists, return its index. Otherwise, return -1.\n\nExample:\nInput: nums = [-1,0,3,5,9,12], target = 9\nOutput: 4\n\nConstraints:\n• 1 ≤ nums.length ≤ 10⁴\n• All integers in nums are unique',
+    resources: [{ id: 2, label: 'LeetCode', url: 'https://leetcode.com/problems/binary-search/' }],
+  },
+  {
+    id: 3, title: 'Reverse Linked List', type: 'DSA', difficulty: 'easy', topic: 'DSA', resource_url: 'https://leetcode.com/problems/reverse-linked-list/',
+    description: 'Given the head of a singly linked list, reverse the list and return the reversed list.\n\nExample:\nInput: head = [1,2,3,4,5]\nOutput: [5,4,3,2,1]',
+    resources: [{ id: 3, label: 'LeetCode', url: 'https://leetcode.com/problems/reverse-linked-list/' }],
+  },
+  {
+    id: 4, title: 'Binary Tree Level Order Traversal', type: 'DSA', difficulty: 'medium', topic: 'DSA', resource_url: 'https://leetcode.com/problems/binary-tree-level-order-traversal/',
+    description: "Given the root of a binary tree, return the level order traversal of its nodes' values (from left to right, level by level).\n\nExample:\nInput: root = [3,9,20,null,null,15,7]\nOutput: [[3],[9,20],[15,7]]",
+    resources: [{ id: 4, label: 'LeetCode', url: 'https://leetcode.com/problems/binary-tree-level-order-traversal/' }],
+  },
+  {
+    id: 5, title: 'Course Schedule', type: 'DSA', difficulty: 'medium', topic: 'DSA', resource_url: 'https://leetcode.com/problems/course-schedule/',
+    description: 'There are numCourses courses labeled from 0 to numCourses - 1. Given an array prerequisites where prerequisites[i] = [ai, bi] means you must take bi first before ai.\n\nReturn true if you can finish all courses. Otherwise, return false.',
+    resources: [{ id: 5, label: 'LeetCode', url: 'https://leetcode.com/problems/course-schedule/' }],
+  },
+  {
+    id: 6, title: 'Process Scheduling', type: 'OS', difficulty: 'medium', topic: 'OS', resource_url: '',
+    description: 'Implement and compare the following CPU scheduling algorithms:\n\n1. First-Come, First-Served (FCFS)\n2. Shortest Job First (SJF) — Non-preemptive\n3. Round Robin (RR) with configurable time quantum\n\nFor each algorithm, calculate:\n• Average waiting time\n• Average turnaround time\n• CPU utilization\n\nDiscuss the trade-offs in terms of fairness, throughput, and response time.',
+    resources: [],
+  },
+  {
+    id: 7, title: 'Memory Management', type: 'OS', difficulty: 'medium', topic: 'OS', resource_url: '',
+    description: "Explain the difference between paging and segmentation in OS memory management.\n\nIn your answer:\n• Define each technique and how it works\n• Compare address translation mechanisms\n• Discuss fragmentation issues (internal vs external)\n• Explain when you'd prefer one over the other\n\nBonus: What is a TLB and how does it improve paging performance?",
+    resources: [],
+  },
+  {
+    id: 8, title: 'Deadlock Detection', type: 'OS', difficulty: 'hard', topic: 'OS', resource_url: '',
+    description: "Implement the Banker's Algorithm for deadlock avoidance.\n\nGiven:\n• Number of processes and resource types\n• Maximum resource claim per process\n• Currently allocated resources\n• Available resources\n\nYour implementation should:\n1. Determine if the current state is safe\n2. Find a safe execution sequence if one exists\n3. Decide whether to grant a resource request",
+    resources: [],
+  },
+  {
+    id: 9, title: 'SQL Queries', type: 'Database', difficulty: 'easy', topic: 'Database', resource_url: '',
+    description: 'Given the schema:\nEmployees(id, name, department_id, salary, hire_date)\nDepartments(id, name, manager_id)\n\nWrite SQL queries to:\n1. Find employees earning above the average salary in their department\n2. List departments with more than 5 employees, sorted by headcount\n3. Find the top 3 highest-paid employees per department\n4. Find employees hired in the last 6 months with no manager in their department',
+    resources: [],
+  },
+  {
+    id: 10, title: 'Joins & Aggregations', type: 'Database', difficulty: 'medium', topic: 'Database', resource_url: '',
+    description: 'Given the tables:\nOrders(order_id, customer_id, product_id, quantity, order_date)\nCustomers(customer_id, name, country, email)\nProducts(product_id, name, price, category)\n\nTasks:\n1. Find customers who have never placed an order\n2. Calculate monthly revenue per product category for 2026\n3. Find the customer who spent the most in each country\n4. List products that appear in more than 50% of all orders',
+    resources: [],
+  },
+  {
+    id: 11, title: 'Database Normalization', type: 'Database', difficulty: 'medium', topic: 'Database', resource_url: '',
+    description: 'Given the unnormalized relation:\nStudentCourse(student_id, student_name, student_email, course_id, course_name, instructor_id, instructor_name, grade, semester)\n\nTasks:\n1. Identify all functional dependencies\n2. Normalize to 1NF, then 2NF, then 3NF\n3. Show resulting tables with primary/foreign keys\n4. Explain what anomalies are eliminated at each step',
+    resources: [],
+  },
 ]
+
+const difficultyVariant: Record<Difficulty, string> = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+}
+
+type Modal =
+  | { mode: 'create' }
+  | { mode: 'edit'; target: Problem }
+  | { mode: 'delete'; target: Problem }
 
 export function TrainerProblems() {
   const navigate = useNavigate()
@@ -34,34 +93,33 @@ export function TrainerProblems() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | ProblemType>('all')
   const [detail, setDetail] = useState<Problem | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ title: '', type: 'DSA' as ProblemType, description: '', resource_url: '' })
-  const [createDone, setCreateDone] = useState(false)
+  const [modal, setModal] = useState<Modal | null>(null)
 
   const filtered = problems.filter((p) => {
     const q = search.toLowerCase()
-    const matchSearch = p.title.toLowerCase().includes(q)
-    const matchType = typeFilter === 'all' || p.type === typeFilter
-    return matchSearch && matchType
+    return p.title.toLowerCase().includes(q) && (typeFilter === 'all' || p.type === typeFilter)
   })
 
-  const handleCreate = () => {
-    if (!form.title.trim()) return
-    const newProblem: Problem = {
-      id: Date.now(),
-      title: form.title.trim(),
-      type: form.type,
-      description: form.description.trim(),
-      resource_url: form.resource_url.trim(),
+  const openCreate = () => setModal({ mode: 'create' })
+  const openEdit = (p: Problem) => { setDetail(null); setModal({ mode: 'edit', target: p }) }
+  const openDelete = (p: Problem) => { setDetail(null); setModal({ mode: 'delete', target: p }) }
+  const closeModal = () => setModal(null)
+
+  const handleSave = (draft: ProblemDraft) => {
+    if (modal?.mode === 'create') {
+      setProblems((prev) => [{ id: Date.now(), topic: draft.type, resource_url: draft.resources[0]?.url ?? '', ...draft }, ...prev])
+    } else if (modal?.mode === 'edit') {
+      const id = modal.target.id
+      setProblems((prev) => prev.map((p) => (p.id === id ? { ...p, ...draft, topic: draft.type } : p)))
+      setDetail((prev) => (prev?.id === id ? { ...prev, ...draft, topic: draft.type } : prev))
     }
-    setProblems((prev) => [newProblem, ...prev])
-    setCreateDone(true)
+    closeModal()
   }
 
-  const closeCreate = () => {
-    setShowCreate(false)
-    setForm({ title: '', type: 'DSA', description: '', resource_url: '' })
-    setCreateDone(false)
+  const handleDelete = () => {
+    if (modal?.mode !== 'delete') return
+    setProblems((prev) => prev.filter((p) => p.id !== modal.target.id))
+    closeModal()
   }
 
   return (
@@ -78,11 +136,12 @@ export function TrainerProblems() {
           <h1 className="text-2xl font-bold text-gray-900">Problems</h1>
           <p className="text-sm text-gray-400 mt-0.5">{problems.length} problems</p>
         </div>
-        <Button onClick={() => { setShowCreate(true); setCreateDone(false) }}>
+        <Button onClick={openCreate}>
           <Plus size={15} /> Create New Problem
         </Button>
       </div>
 
+      {/* Filters */}
       <div className="flex items-center gap-3 mb-5">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -108,23 +167,51 @@ export function TrainerProblems() {
         </div>
       </div>
 
+      {/* Problem list */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-[48px_1fr_120px] border-b border-gray-100 px-6 py-3">
-          {['#', 'TITLE', 'TYPE'].map((h) => (
-            <span key={h} className="text-[10px] font-bold text-gray-400 tracking-widest">{h}</span>
+        <div className="grid grid-cols-[48px_1fr_120px_90px_88px] border-b border-gray-100 px-6 py-3">
+          {['#', 'TITLE', 'TYPE', 'DIFFICULTY', ''].map((h, i) => (
+            <span key={i} className="text-[10px] font-bold text-gray-400 tracking-widest">{h}</span>
           ))}
         </div>
         {filtered.map((p, i) => (
           <div
             key={p.id}
-            className={`grid grid-cols-[48px_1fr_120px] items-center px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+            className={`group grid grid-cols-[48px_1fr_120px_90px_88px] items-center px-6 py-4 hover:bg-gray-50 transition-colors ${
               i < filtered.length - 1 ? 'border-b border-gray-50' : ''
             }`}
-            onClick={() => setDetail(p)}
           >
-            <span className="text-sm text-gray-400">{i + 1}</span>
-            <span className="text-sm font-semibold text-gray-900">{p.title}</span>
-            <TypeBadge type={p.type} />
+            <span className="text-sm text-gray-400 cursor-pointer" onClick={() => setDetail(p)}>{i + 1}</span>
+            <span
+              className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-accent transition-colors"
+              onClick={() => setDetail(p)}
+            >
+              {p.title}
+            </span>
+            <div className="cursor-pointer" onClick={() => setDetail(p)}>
+              <TypeBadge type={p.type} />
+            </div>
+            <div className="flex items-center cursor-pointer" onClick={() => setDetail(p)}>
+              <Badge variant={difficultyVariant[p.difficulty]}>
+                {p.difficulty.charAt(0).toUpperCase() + p.difficulty.slice(1)}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+              <button
+                onClick={(e) => { e.stopPropagation(); openEdit(p) }}
+                title="Edit"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-accent hover:bg-accent/10 transition-colors"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); openDelete(p) }}
+                title="Delete"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
         ))}
         {filtered.length === 0 && (
@@ -132,104 +219,104 @@ export function TrainerProblems() {
         )}
       </div>
 
-      {/* Detail drawer */}
+      {/* ── Detail drawer ── */}
       {detail && (
-        <div className="fixed inset-0 bg-black/30 flex justify-end z-50" onClick={() => setDetail(null)}>
-          <div className="w-[480px] bg-white h-full shadow-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
+        <div className="fixed inset-0 bg-black/30 flex justify-end z-40" onClick={() => setDetail(null)}>
+          <div className="w-[520px] bg-white h-full shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <h3 className="font-bold text-gray-900">Problem Details</h3>
               <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
             </div>
-            <div className="p-6 space-y-5">
-              <TypeBadge type={detail.type} />
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <TypeBadge type={detail.type} />
+                <Badge variant={difficultyVariant[detail.difficulty]}>
+                  {detail.difficulty.charAt(0).toUpperCase() + detail.difficulty.slice(1)}
+                </Badge>
+              </div>
               <h2 className="text-xl font-bold text-gray-900">{detail.title}</h2>
               {detail.description && (
                 <div>
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</p>
-                  <p className="text-sm text-gray-600 leading-relaxed">{detail.description}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{detail.description}</p>
                 </div>
               )}
-              {detail.resource_url && (
+              {detail.resources.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Resource</p>
-                  <a href={detail.resource_url} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-accent font-medium hover:underline break-all">
-                    {detail.resource_url}
-                  </a>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Resources</p>
+                  <div className="space-y-1.5">
+                    {detail.resources.map((r) => (
+                      r.filename ? (
+                        <div key={r.id} className="flex items-center gap-2 text-sm text-gray-600">
+                          <Paperclip size={13} className="text-gray-400 flex-shrink-0" />
+                          {r.filename}
+                        </div>
+                      ) : (
+                        <a
+                          key={r.id}
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-accent font-medium hover:underline"
+                        >
+                          <ExternalLink size={13} className="flex-shrink-0" />
+                          {r.label || r.url}
+                        </a>
+                      )
+                    ))}
+                  </div>
                 </div>
               )}
+            </div>
+            <div className="flex items-center gap-2 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+              <Button onClick={() => openEdit(detail)} size="sm"><Pencil size={13} /> Edit</Button>
+              <Button variant="danger" onClick={() => openDelete(detail)} size="sm"><Trash2 size={13} /> Delete</Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Create problem modal */}
-      {showCreate && (
+      {/* ── Delete confirmation ── */}
+      {modal?.mode === 'delete' && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-[520px]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900">Create New Problem</h3>
-              <button onClick={closeCreate}><X size={18} className="text-gray-400 hover:text-gray-700" /></button>
+          <div className="bg-white rounded-2xl shadow-xl w-[400px] p-6">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">Delete problem?</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  <span className="font-semibold text-gray-800">"{modal.target.title}"</span> will be permanently removed from the problem bank.
+                </p>
+              </div>
             </div>
-
-            {createDone ? (
-              <div className="p-8 flex flex-col items-center gap-3 text-center">
-                <CheckCircle2 size={36} className="text-green-500" />
-                <p className="font-bold text-gray-900">Problem created!</p>
-                <p className="text-sm text-gray-400">{form.title}</p>
-                <Button onClick={closeCreate}>Done</Button>
-              </div>
-            ) : (
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Title <span className="text-red-400">*</span></label>
-                  <input
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    placeholder="e.g. Two Sum"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:border-accent/60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Type</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as ProblemType })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none"
-                  >
-                    <option value="DSA">DSA</option>
-                    <option value="OS">OS</option>
-                    <option value="Database">Database</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Problem description..."
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:border-accent/60 resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Resource URL</label>
-                  <input
-                    value={form.resource_url}
-                    onChange={(e) => setForm({ ...form, resource_url: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:border-accent/60"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="secondary" onClick={closeCreate}>Cancel</Button>
-                  <Button onClick={handleCreate} disabled={!form.title.trim()}>Create</Button>
-                </div>
-              </div>
-            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+              <Button variant="danger" onClick={handleDelete}>Delete</Button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* ── Create / Edit composer (full-screen) ── */}
+      {(modal?.mode === 'create' || modal?.mode === 'edit') && (
+        <ProblemComposer
+          mode={modal.mode}
+          initial={
+            modal.mode === 'edit'
+              ? {
+                  title: modal.target.title,
+                  type: modal.target.type,
+                  difficulty: modal.target.difficulty,
+                  description: modal.target.description,
+                  resources: modal.target.resources,
+                }
+              : undefined
+          }
+          onSave={handleSave}
+          onClose={closeModal}
+        />
       )}
     </div>
   )

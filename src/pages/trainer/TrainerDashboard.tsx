@@ -33,14 +33,14 @@ export function TrainerDashboard() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
-          label="My Classes"
+          label="Active Classes"
           value={2}
           icon={<BookOpen size={18} className="text-accent" />}
           color="bg-red-50"
-          trend="2 active"
+          trend="All currently active"
         />
         <StatCard
-          label="Total Students"
+          label="Active Students"
           value={48}
           icon={<Users size={18} className="text-blue-600" />}
           color="bg-blue-50"

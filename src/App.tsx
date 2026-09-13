@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import { AppLayout } from './components/layout/AppLayout'
+import { NotificationsPage } from './pages/NotificationsPage'
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage'
@@ -75,6 +77,9 @@ function AppRoutes() {
         <Route path="/admin/classes/:classId/manage" element={<ManageClass />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/problems" element={<AdminProblems />} />
+
+        {/* Notifications (all roles) */}
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -85,9 +90,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <NotificationProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   )
 }
