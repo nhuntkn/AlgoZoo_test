@@ -57,6 +57,18 @@ export function RegisterPage({ forcedRole }: { forcedRole?: Role }) {
     )
   }
 
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-[#f4f5f7] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md text-center">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Invitation required</h1>
+          <p className="text-sm text-gray-500 mb-6">Registration is available only through an invitation link from an administrator.</p>
+          <a href="/login" className="text-accent font-semibold hover:underline">Log in instead</a>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f5f7] flex items-center justify-center py-12 px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">

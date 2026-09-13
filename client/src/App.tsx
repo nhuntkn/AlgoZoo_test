@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { AppLayout } from './components/layout/AppLayout'
@@ -6,8 +6,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage'
-import { StudentJoinPage } from './pages/auth/StudentJoinPage'
-import { TrainerJoinPage } from './pages/auth/TrainerJoinPage'
+import { RegisterPage } from './pages/auth/RegisterPage'
 
 // Student
 import { StudentDashboard } from './pages/student/StudentDashboard'
@@ -34,11 +33,9 @@ import { AdminUsers } from './pages/admin/AdminUsers'
 import { AdminProblems } from './pages/admin/AdminProblems'
 import { ManageClass } from './pages/admin/ManageClass'
 
-function RoleRedirect() {
+function RequireAuth() {
   const { user } = useAuth()
-  if (user.role === 'student') return <Navigate to="/student/dashboard" replace />
-  if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />
-  return <Navigate to="/trainer/dashboard" replace />
+  return user ? <Outlet /> : <Navigate to="/login" replace />
 }
 
 function AppRoutes() {
@@ -46,11 +43,11 @@ function AppRoutes() {
     <Routes>
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/join/student/:token" element={<StudentJoinPage />} />
-      <Route path="/join/trainer/:token" element={<TrainerJoinPage />} />
-      <Route path="/" element={<RoleRedirect />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
-      <Route element={<AppLayout />}>
+      <Route element={<RequireAuth />}>
+        <Route element={<AppLayout />}>
         {/* Student */}
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/student/classes" element={<StudentClasses />} />
@@ -80,6 +77,7 @@ function AppRoutes() {
 
         {/* Notifications (all roles) */}
         <Route path="/notifications" element={<NotificationsPage />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

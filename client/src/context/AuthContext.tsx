@@ -10,21 +10,15 @@ export interface User {
 }
 
 interface AuthContextType {
-  user: User
+  user: User | null
   login: (email: string, password: string) => Promise<User>
+  register: (token: string, fullname: string, email: string, password: string) => Promise<User>
   setRole: (role: Role) => void
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
-const defaultUser: User = {
-  name: 'Juliana Silva',
-  email: 'juliana@algozoo.com',
-  role: 'student',
-  initials: 'JS',
-}
 
 const getInitials = (name?: string) => {
   if (!name || typeof name !== 'string') return 'U'
@@ -38,7 +32,7 @@ const getInitials = (name?: string) => {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(defaultUser)
+  const [user, setUser] = useState<User | null>(null)
 
   const login = async (email: string, password: string): Promise<User> => {
     const res = await fetch(`${API_URL}/api/auth/login`, {
@@ -66,9 +60,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return nextUser
   }
 
+  const register = async (token: string, fullname: string, email: string, password: string): Promise<User> => {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ token, fullname, email, password }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data?.message || 'Registration failed')
+    }
+
+    const registeredUser = data?.data?.user ?? {}
+    const nextUser: User = {
+      name: registeredUser?.fullname || 'User',
+      email: registeredUser?.email || email,
+      role: (registeredUser?.role as Role) || 'student',
+      initials: getInitials(registeredUser?.fullname),
+    }
+
+    setUser(nextUser)
+    return nextUser
+  }
+
   const setRole = (role: Role) => {
     setUser((current) => ({
-      ...current,
+      ...(current || { name: '', email: '', initials: '' }),
       role,
     }))
   }
@@ -80,11 +100,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credentials: 'include',
       })
     } finally {
-      setUser(defaultUser)
+      setUser(null)
     }
   }
 
-  return <AuthContext.Provider value={{ user, login, setRole, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, register, setRole, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
@@ -95,6 +115,7 @@ export function useAuth() {
 
 export function RoleSwitcher() {
   const { user, setRole } = useAuth()
+  if (!user) return null
   return (
     <div className="px-2 py-2">
       <p className="text-[10px] text-gray-500 mb-1 px-1">Demo Role</p>

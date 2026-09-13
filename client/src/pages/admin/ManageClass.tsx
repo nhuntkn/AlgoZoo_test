@@ -1,16 +1,18 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Copy, Check, X, UserMinus, Link2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 
-const classData = {
-  id: 1,
-  name: 'WeCamp Batch 21',
-  description: 'NAB WeCamp Batch 21',
-  status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
-  studentJoinToken: '8f3k2mxp9qlz',
-  trainerInviteToken: 'tr7n4vw1yabs',
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+const emptyClass = {
+  id: '',
+  name: '',
+  description: '',
+  status: 'INACTIVE' as 'ACTIVE' | 'INACTIVE',
+  studentJoinToken: '',
+  trainerInviteToken: '',
 }
 
 const initialStudents = [
@@ -26,24 +28,166 @@ const initialTrainers = [
 ]
 
 export function ManageClass() {
+  const { classId } = useParams()
   const [tab, setTab] = useState<'general' | 'students' | 'trainers'>('general')
-  const [cls, setCls] = useState(classData)
+  const [cls, setCls] = useState(emptyClass)
   const [form, setForm] = useState({ name: cls.name, description: cls.description, status: cls.status })
   const [saved, setSaved] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
   const [students, setStudents] = useState(initialStudents)
   const [trainers, setTrainers] = useState(initialTrainers)
   const [copiedStudent, setCopiedStudent] = useState(false)
   const [copiedTrainer, setCopiedTrainer] = useState(false)
   const [showStudentLink, setShowStudentLink] = useState(false)
   const [showTrainerLink, setShowTrainerLink] = useState(false)
+  const [studentJoinLink, setStudentJoinLink] = useState('')
+  const [trainerInviteLink, setTrainerInviteLink] = useState('')
+  const [generatingLink, setGeneratingLink] = useState<'student' | 'trainer' | null>(null)
 
-  const studentJoinLink = `https://algozoo.com/join/student/${cls.studentJoinToken}`
-  const trainerInviteLink = `https://algozoo.com/join/trainer/${cls.trainerInviteToken}`
+  useEffect(() => {
+    const loadClass = async () => {
+      if (!classId) {
+        setError('Class ID is missing')
+        setIsLoading(false)
+        return
+      }
 
-  const handleSave = () => {
-    setCls((prev) => ({ ...prev, ...form }))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+      try {
+        const response = await fetch(`${API_URL}/api/admin/classes`, { credentials: 'include' })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data?.message || 'Unable to load class')
+        }
+
+        const classRecord = data?.data?.classes?.find((item: { _id?: string }) => item._id === classId)
+        if (!classRecord) {
+          throw new Error('Class not found')
+        }
+
+        const loadedClass = {
+          id: classRecord._id,
+          name: classRecord.name,
+          description: classRecord.description || '',
+          status: classRecord.isActive ? 'ACTIVE' as const : 'INACTIVE' as const,
+          studentJoinToken: classRecord.studentJoinToken || '',
+          trainerInviteToken: classRecord.trainerInviteToken || '',
+        }
+
+        setCls(loadedClass)
+        setForm({ name: loadedClass.name, description: loadedClass.description, status: loadedClass.status })
+        setStudentJoinLink(loadedClass.studentJoinToken ? `${window.location.origin}/register?token=${loadedClass.studentJoinToken}` : '')
+        setTrainerInviteLink(loadedClass.trainerInviteToken ? `${window.location.origin}/register?token=${loadedClass.trainerInviteToken}` : '')
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Unable to load class')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadClass()
+  }, [classId])
+
+  const generateJoinLink = async (role: 'student' | 'trainer') => {
+    if (!classId || generatingLink) return
+
+    setError('')
+    setGeneratingLink(role)
+
+    try {
+      const response = await fetch(`${API_URL}/api/classes/${classId}/generate-join-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role, expiresInDays: 2 }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to generate invitation link')
+      }
+
+      const joinUrl = data?.data?.joinUrl
+      if (!joinUrl) {
+        throw new Error('The server did not return an invitation link')
+      }
+
+      if (role === 'student') {
+        setStudentJoinLink(joinUrl)
+        setShowStudentLink(true)
+      } else {
+        setTrainerInviteLink(joinUrl)
+        setShowTrainerLink(true)
+      }
+    } catch (linkError) {
+      setError(linkError instanceof Error ? linkError.message : 'Unable to generate invitation link')
+    } finally {
+      setGeneratingLink(null)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!classId || !form.name.trim() || isSaving) return
+
+    setError('')
+    setSaved(false)
+    setIsSaving(true)
+
+    try {
+      const detailsChanged = form.name.trim() !== cls.name || form.description !== cls.description
+      const statusChanged = form.status !== cls.status
+
+      if (detailsChanged) {
+        const response = await fetch(`${API_URL}/api/admin/classes/${classId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: form.name.trim(),
+            description: form.description,
+          }),
+        })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data?.message || 'Unable to update class information')
+        }
+
+        setCls((prev) => ({
+          ...prev,
+          name: data?.data?.name || form.name.trim(),
+          description: data?.data?.description || form.description,
+        }))
+      }
+
+      if (statusChanged) {
+        const response = await fetch(`${API_URL}/api/admin/classes/${classId}/active`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ isActive: form.status === 'ACTIVE' }),
+        })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data?.message || 'Unable to update class status')
+        }
+
+        setCls((prev) => ({
+          ...prev,
+          status: data?.data?.class?.isActive ? 'ACTIVE' : 'INACTIVE',
+        }))
+      }
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to update class')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const copyStudentLink = () => {
@@ -68,6 +212,9 @@ export function ManageClass() {
         <span>/</span>
         <span className="text-gray-700 font-medium">Manage Class</span>
       </div>
+
+      {isLoading && <p className="text-sm text-gray-500">Loading class...</p>}
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 mb-4">{error}</p>}
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-7">
@@ -128,7 +275,9 @@ export function ManageClass() {
             </select>
           </div>
           <div className="flex items-center gap-3 pt-2">
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button onClick={handleSave} disabled={isSaving || isLoading || !form.name.trim()}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
             {saved && (
               <span className="flex items-center gap-1 text-sm text-green-600">
                 <Check size={14} /> Saved
@@ -143,8 +292,8 @@ export function ManageClass() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Students <span className="text-gray-400 font-normal ml-1">{students.length} students</span></h2>
-            <Button variant="secondary" onClick={() => setShowStudentLink(true)}>
-              <Link2 size={14} /> Get Student Join Link
+            <Button variant="secondary" onClick={() => generateJoinLink('student')} disabled={generatingLink !== null}>
+              <Link2 size={14} /> {generatingLink === 'student' ? 'Generating...' : 'Get Student Join Link'}
             </Button>
           </div>
 
@@ -200,7 +349,9 @@ export function ManageClass() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Trainers <span className="text-gray-400 font-normal ml-1">{trainers.length} trainers</span></h2>
-            <Button onClick={() => setShowTrainerLink(true)}>+ Invite Trainer</Button>
+            <Button onClick={() => generateJoinLink('trainer')} disabled={generatingLink !== null}>
+              {generatingLink === 'trainer' ? 'Generating...' : '+ Invite Trainer'}
+            </Button>
           </div>
 
           {showTrainerLink && (

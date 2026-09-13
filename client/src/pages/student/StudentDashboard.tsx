@@ -18,6 +18,7 @@ const recentSubmissions = [
 
 export function StudentDashboard() {
   const { user } = useAuth()
+  if (!user) return null
   const firstName = user.name.split(' ')[0]
 
   const daysLeftColor = (days: number) => {

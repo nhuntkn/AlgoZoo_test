@@ -68,6 +68,7 @@ type TabKey = 'all' | 'unread'
 
 export function NotificationsPage() {
   const { user } = useAuth()
+  if (!user) return null
   const { getForRole, getUnreadCount, markRead, markAllRead } = useNotifications()
   const [tab, setTab] = useState<TabKey>('all')
 

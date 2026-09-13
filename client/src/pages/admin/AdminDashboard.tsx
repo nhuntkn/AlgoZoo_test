@@ -1,41 +1,93 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, X, CheckCircle2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 
 type ClassItem = {
-  id: number
+  id: number | string
   name: string
   description: string
   status: 'ACTIVE' | 'INACTIVE'
 }
 
-const initialClasses: ClassItem[] = [
-  { id: 1, name: 'WeCamp Batch 21', description: 'NAB WeCamp Batch 21', status: 'ACTIVE' },
-  { id: 2, name: 'WeCamp Batch 22', description: 'NAB WeCamp Batch 22', status: 'INACTIVE' },
-  { id: 3, name: 'StarCamp Batch 1', description: 'NAB StarCamp Batch 1', status: 'ACTIVE' },
-]
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 export function AdminDashboard() {
-  const [classes, setClasses] = useState<ClassItem[]>(initialClasses)
+  const [classes, setClasses] = useState<ClassItem[]>([])
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', description: '' })
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleCreate = () => {
-    if (!form.name.trim()) return
-    setClasses((prev) => [
-      { id: Date.now(), name: form.name.trim(), description: form.description.trim(), status: 'ACTIVE' },
-      ...prev,
-    ])
-    setDone(true)
+  useEffect(() => {
+    const loadClasses = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/admin/classes`, { credentials: 'include' })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data?.message || 'Unable to load classes')
+        }
+
+        setClasses((data?.data?.classes || []).map((classRecord: { _id: string; name: string; description?: string; isActive: boolean }) => ({
+          id: classRecord._id,
+          name: classRecord.name,
+          description: classRecord.description || '',
+          status: classRecord.isActive ? 'ACTIVE' : 'INACTIVE',
+        })))
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Unable to load classes')
+      }
+    }
+
+    loadClasses()
+  }, [])
+
+  const handleCreate = async () => {
+    const name = form.name.trim()
+    if (!name || isSubmitting) return
+
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/classes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name, description: form.description.trim() }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to create class')
+      }
+
+      const createdClass = data?.data
+      setClasses((prev) => [
+        {
+          id: createdClass?.class_id,
+          name: createdClass?.name || name,
+          description: createdClass?.description || form.description.trim(),
+          status: 'ACTIVE',
+        },
+        ...prev,
+      ])
+      setDone(true)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to create class')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const closeModal = () => {
     setShowModal(false)
     setForm({ name: '', description: '' })
     setDone(false)
+    setError('')
   }
 
   return (
@@ -58,12 +110,14 @@ export function AdminDashboard() {
       {/* Classes section */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900">Classes</h2>
-        <Button onClick={() => { setShowModal(true); setDone(false); setForm({ name: '', description: '' }) }}>
+        <Button onClick={() => { setShowModal(true); setDone(false); setError(''); setForm({ name: '', description: '' }) }}>
           <Plus size={15} /> Add Class
         </Button>
       </div>
 
       <div className="space-y-3">
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {!error && classes.length === 0 && <p className="text-sm text-gray-500">No classes found.</p>}
         {classes.map((c) => (
           <div key={c.id} className="bg-white rounded-2xl px-6 py-5 shadow-sm flex items-center justify-between">
             <div>
@@ -100,6 +154,7 @@ export function AdminDashboard() {
               </div>
             ) : (
               <div className="p-6 space-y-4">
+                {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Class Name <span className="text-red-400">*</span></label>
                   <input
@@ -120,7 +175,9 @@ export function AdminDashboard() {
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-                  <Button onClick={handleCreate} disabled={!form.name.trim()}>Create Class</Button>
+                  <Button onClick={handleCreate} disabled={!form.name.trim() || isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Class'}
+                  </Button>
                 </div>
               </div>
             )}

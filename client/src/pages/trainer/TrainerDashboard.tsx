@@ -19,6 +19,7 @@ const classProgress = [
 
 export function TrainerDashboard() {
   const { user } = useAuth()
+  if (!user) return null
   const firstName = user.name.split(' ')[0]
 
   return (

@@ -47,6 +47,7 @@ interface NotificationDropdownProps {
 
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
   const { user } = useAuth()
+  if (!user) return null
   const { getForRole, getUnreadCount, markAllRead } = useNotifications()
   const ref = useRef<HTMLDivElement>(null)
 

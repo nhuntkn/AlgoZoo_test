@@ -5,8 +5,9 @@ import { Button } from '../../components/ui/Button'
 import { ProgressBar } from '../../components/ui/ProgressBar'
 
 type ClassItem = {
-  id: number
+  id: number | string
   name: string
+  description?: string
   startDate: string
   endDate: string
   trainers: string[]
@@ -16,19 +17,13 @@ type ClassItem = {
   progress: number
 }
 
-const initialClasses: ClassItem[] = [
-  { id: 1, name: 'WeCamp Batch 15', startDate: 'Jan 15, 2025', endDate: 'Mar 30, 2025', trainers: ['Nguyen Van Hung'], students: 24, problems: 35, status: 'active', progress: 62 },
-  { id: 2, name: 'StarCamp Batch 2', startDate: 'Feb 1, 2025', endDate: 'Apr 15, 2025', trainers: ['Tran Thi Mai'], students: 18, problems: 28, status: 'active', progress: 45 },
-  { id: 3, name: 'WeCamp Batch 14', startDate: 'Sep 1, 2024', endDate: 'Nov 30, 2024', trainers: ['Le Van An'], students: 22, problems: 30, status: 'active', progress: 88 },
-  { id: 4, name: 'StarCamp Batch 1', startDate: 'Oct 1, 2024', endDate: 'Dec 20, 2024', trainers: ['Pham Thi Huong'], students: 20, problems: 25, status: 'disabled', progress: 100 },
-]
-
 const allTrainers = ['Nguyen Van Hung', 'Tran Thi Mai', 'Le Van An', 'Pham Thi Huong']
 
-const emptyForm = { name: '', startDate: '', endDate: '', trainer: allTrainers[0] }
+const emptyForm = { name: '', description: '', startDate: '', endDate: '', trainer: allTrainers[0] }
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 export function AdminClasses() {
-  const [classes, setClasses] = useState<ClassItem[]>(initialClasses)
+  const [classes, setClasses] = useState<ClassItem[]>([])
   const [search, setSearch] = useState('')
 
   // modal state
@@ -36,6 +31,8 @@ export function AdminClasses() {
   const [editing, setEditing] = useState<ClassItem | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const filtered = classes.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -45,13 +42,21 @@ export function AdminClasses() {
     setForm(emptyForm)
     setEditing(null)
     setDone(false)
+    setError('')
     setModal('create')
   }
 
   const openEdit = (c: ClassItem) => {
     setEditing(c)
-    setForm({ name: c.name, startDate: c.startDate, endDate: c.endDate, trainer: c.trainers[0] })
+    setForm({
+      name: c.name,
+      description: c.description || '',
+      startDate: c.startDate,
+      endDate: c.endDate,
+      trainer: c.trainers[0],
+    })
     setDone(false)
+    setError('')
     setModal('edit')
   }
 
@@ -62,21 +67,50 @@ export function AdminClasses() {
 
   const closeModal = () => { setModal(null); setEditing(null); setDone(false) }
 
-  const handleCreate = () => {
-    if (!form.name.trim()) return
-    const newClass: ClassItem = {
-      id: Date.now(),
-      name: form.name,
-      startDate: form.startDate || 'TBD',
-      endDate: form.endDate || 'TBD',
-      trainers: [form.trainer],
-      students: 0,
-      problems: 0,
-      status: 'active',
-      progress: 0,
+  const handleCreate = async () => {
+    const name = form.name.trim()
+    if (!name || isSubmitting) return
+
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(`${API_URL}/api/admin/classes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          description: form.description.trim(),
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to create class')
+      }
+
+      const createdClass = data?.data
+      const newClass: ClassItem = {
+        id: createdClass?.class_id || Date.now(),
+        name: createdClass?.name || name,
+        description: createdClass?.description || form.description.trim(),
+        startDate: form.startDate || 'TBD',
+        endDate: form.endDate || 'TBD',
+        trainers: [form.trainer],
+        students: 0,
+        problems: 0,
+        status: 'active',
+        progress: 0,
+      }
+
+      setClasses((prev) => [newClass, ...prev])
+      setDone(true)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to create class')
+    } finally {
+      setIsSubmitting(false)
     }
-    setClasses((prev) => [newClass, ...prev])
-    setDone(true)
   }
 
   const handleEdit = () => {
@@ -97,7 +131,7 @@ export function AdminClasses() {
     closeModal()
   }
 
-  const toggleStatus = (id: number) => {
+  const toggleStatus = (id: number | string) => {
     setClasses((prev) =>
       prev.map((c) => c.id === id ? { ...c, status: c.status === 'active' ? 'disabled' : 'active' } : c)
     )
@@ -176,6 +210,7 @@ export function AdminClasses() {
               </div>
             ) : (
               <div className="p-6 space-y-4">
+                {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Class Name <span className="text-red-400">*</span></label>
                   <input
@@ -183,6 +218,16 @@ export function AdminClasses() {
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="e.g. WeCamp Batch 16"
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:border-accent/60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Describe this class"
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:border-accent/60 resize-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -208,8 +253,8 @@ export function AdminClasses() {
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-                  <Button onClick={modal === 'create' ? handleCreate : handleEdit} disabled={!form.name.trim()}>
-                    {modal === 'create' ? 'Create Class' : 'Save Changes'}
+                  <Button onClick={modal === 'create' ? handleCreate : handleEdit} disabled={!form.name.trim() || isSubmitting}>
+                    {isSubmitting ? 'Creating...' : modal === 'create' ? 'Create Class' : 'Save Changes'}
                   </Button>
                 </div>
               </div>

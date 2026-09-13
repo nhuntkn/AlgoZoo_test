@@ -8,7 +8,7 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react'
-import { useAuth, RoleSwitcher } from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContext'
 
 interface NavItem {
   to: string
@@ -41,6 +41,7 @@ function getNavItems(role: string): NavItem[] {
 
 export function Sidebar() {
   const { user, logout } = useAuth()
+  if (!user) return null
   const navigate = useNavigate()
   const navItems = getNavItems(user.role)
 
@@ -89,7 +90,6 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-white/10 pt-2 pb-4 flex-shrink-0">
-        <RoleSwitcher />
         <div className="px-3 mt-1">
           <button
             onClick={() => { logout(); navigate('/login') }}
