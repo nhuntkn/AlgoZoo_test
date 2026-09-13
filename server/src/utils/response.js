@@ -1,6 +1,6 @@
-const {currentDateTime,getDateAfterDuration} = require('../ultils/date');
+const {currentDateTime,getDateAfterDuration} = require('../utils/date');
 const {JWT_TOKEN_COOKIE_EXPIRES,JWT_ACCESS_TOKEN_EXPIRES,JWT_REFRESH_TOKEN_EXPIRES} = require('../config/env');
-const {generateAccessToken,generateRefreshToken} = require('../ultils/jwt');
+const {generateAccessToken,generateRefreshToken} = require('../utils/jwt');
 
 
 // Successful login response
