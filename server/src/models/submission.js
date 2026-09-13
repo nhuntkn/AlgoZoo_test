@@ -57,8 +57,5 @@ const SubmissionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/feat-auth
 module.exports = mongoose.model('Submission', SubmissionSchema);
