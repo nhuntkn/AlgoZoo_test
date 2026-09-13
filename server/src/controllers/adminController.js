@@ -51,7 +51,7 @@ exports.getUserById = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        name: user.name,
+        fullname: user.fullname,
         role: user.role || 'student', // Default to 'student' if role is not set
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,

@@ -1,5 +1,6 @@
-const { JWT_TOKEN_COOKIE_EXPIRES } = require('../config/env');
+const { JWT_ACCESS_TOKEN_EXPIRES,JWT_REFRESH_TOKEN_EXPIRES } = require('../config/env');
 const { loginResponse } = require('../utils/response');
+const { getDateAfterDuration } = require('../utils/date');
 const {generateAccessToken, generateRefreshToken} = require('../utils/jwt');
 const User = require('../models/user');
 const Class = require('../models/class');
@@ -17,8 +18,8 @@ exports.register = async (req, res) => {
     session.startTransaction();
 
     try { 
-        const {token, username, password, name, email} = req.body; 
-
+        const {token, username, password, fullname, email} = req.body; 
+            
         // 1. Validate required fields 
         if (!token || !username || !password) {
             await session.endSession();
@@ -116,19 +117,19 @@ exports.register = async (req, res) => {
                 });
             }
         } else {
-            //New User: Validate name and create account
-            if (!name || !name.trim()) {
+            //New User: Validate fullname and create account
+            if (!fullname || !fullname.trim()) {
                 await session.abortTransaction();
                 session.endSession();
                 return res.status(400).json({
                     status: 'error',
-                    message: 'Name is required for new registration',
+                    message: 'fullname is required for new registration',
                 });
             }
      
             //Pass session into create() using array syntax
             const [newUser] = await User.create([{
-                name: name.trim(),
+                fullname: fullname.trim(),
                 username: username.trim(),
                 password: password,
                 email: email ? email.trim().toLowerCase() : undefined,
@@ -155,24 +156,38 @@ exports.register = async (req, res) => {
         const accessToken = generateAccessToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
+        const accessCookieOptions = {
+            expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
+            httpOnly: true,
+            sameSite: 'strict'
+        };
+        const refreshCookieOptions = {
+            expires: getDateAfterDuration(JWT_REFRESH_TOKEN_EXPIRES),
+            httpOnly: true,
+            sameSite: 'strict'
+        };
+        
+
         // 9. Return success response
-        return res.status(201).json({
+        return res.status(201)
+        .cookie('accessToken', accessToken, accessCookieOptions)
+        .cookie('refreshToken', refreshToken, refreshCookieOptions)
+        .json({
             status: 'success',
             message: 'Successfully enrolled in class',
             data: {
                 user: {
                     id: user._id,
-                    name: user.name,
+                    fullname: user.fullname,
                     username: user.username,
                     email: user.email,
                     role: user.role,
-                    classId: classDoc._id,
                     isActive: user.isActive,
                     createdAt: user.createdAt,
-                    updatedAt: user.updatedAt
-                },
-                accessToken,
-                refreshToken,
+                    updatedAt: user.updatedAt,
+                    classId: classDoc._id,
+                    className: classDoc.name
+                }
             },
         });
     } catch (error) {
@@ -210,13 +225,20 @@ exports.loginUser = async (req, res) => {
                 status: 'error', 
                 message: 'Username and password are required' });
         }
+        // check if user exists
         const user = await User.findOne({ username: username.trim() }).select('+password');
         if (!user) {
         return res.status(404).json({ 
             status: 'error', 
             message: 'User does not exist' });
         }
-
+        // check if user is active
+        if (!user.isActive) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'User is not active. Please contact administrator'
+            });
+        }
         const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) {
             return res.status(401).json({ 
@@ -274,7 +296,7 @@ exports.refreshToken = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
 
     const options = {
-      expires: new Date(Date.now() + JWT_TOKEN_COOKIE_EXPIRES * 24 * 60 * 60 * 1000),
+      expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
       httpOnly: true,
     };
 
