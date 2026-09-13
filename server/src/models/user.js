@@ -3,15 +3,9 @@ const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema(
   {
-    name: {
-      required: [true, 'Name is required'],
-      type: String,},
-    username: {
-      required: [true, "Username is required"],
+    fullname: {
+      required: [true, 'Full name is required'],
       type: String,
-      unique: true,
-      maxLength: [25, "Username cannot exceed 25 characters"],
-      trim: true,
     },
     email: {
       required: [true, 'Email is required'],
@@ -28,7 +22,7 @@ const UserSchema = new mongoose.Schema(
     }, 
     isActive: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     role: {
       type: String,
@@ -40,26 +34,16 @@ const UserSchema = new mongoose.Schema(
 );
 
 
-// Replace spaces with dashes in username before saving
-UserSchema.pre('save', function (next) {
-  if (this.username) {
-    this.username = this.username.replace(/\s/g, '-');
-  }
 
-  next();
-});
-  
 // Hash password before saving the document
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-
+UserSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 8);
-  next();
 });
+
 // Compare passwords
 UserSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
+
 module.exports = mongoose.model('User', UserSchema);

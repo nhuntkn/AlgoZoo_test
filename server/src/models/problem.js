@@ -22,6 +22,7 @@ const ProblemSchema = new mongoose.Schema(
       required: [false, 'Difficulty is optional'],
       type: String,
       enum: ['Easy', 'Medium', 'Hard'],
+      default: null,
     },
     createdBy: {
       required: [true, 'Author (created_by) is required'],

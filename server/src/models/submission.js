@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 
 const contentBlockSchema = new mongoose.Schema(
   {
@@ -53,8 +54,8 @@ const SubmissionSchema = new mongoose.Schema(
     feedback: { type: String, default: '' },
     reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     reviewed_at: { type: Date, default: null },
-    submitted_at: { type: Date, default: Date.now },
   },
-  { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
+  { timestamps: true }
 );
 
+module.exports = mongoose.model('Submission', SubmissionSchema);
