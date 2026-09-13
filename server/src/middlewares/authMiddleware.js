@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const { JWT_SECRET_KEY, JWT_REFRESH_TOKEN_SECRET_KEY } = require('../config/env');
-
+const { JWT_SECRET_KEY, JWT_REFRESH_TOKEN_SECRET_KEY,JWT_ACCESS_TOKEN_EXPIRES } = require('../config/env');
+const { generateAccessToken } = require('../utils/jwt');
+const { getDateAfterDuration } = require('../utils/date');
 // Middleware for detecting authenticated logged-in user
 exports.isAuthenticatedUser = async (req, res, next) => {
   try {
@@ -9,12 +10,15 @@ exports.isAuthenticatedUser = async (req, res, next) => {
     const accesstoken = req.cookies.accessToken;
 
     if (!accesstoken) {
-      return res.status(403).json({ status: 'error', message: 'Access token is required' });
+      return tryRefreshAccessToken(req, res, next);
     }
     // verify token
     jwt.verify(accesstoken, JWT_SECRET_KEY, async (err, dec) => {
       if (err) {
-        return res.status(401).json({ status: 'error', message: 'JWT access token is expired or invalid. Please logout and login again' });
+        if (err.name === 'TokenExpiredError') {
+          return tryRefreshAccessToken(req, res, next);
+        }
+        return res.status(401).json({ status: 'error', message: 'JWT access token is invalid. Please logout and login again' });
       }
 
       try {      
@@ -26,7 +30,7 @@ exports.isAuthenticatedUser = async (req, res, next) => {
         }
         // Check if user is active
         if (!user.isActive) {
-          return res.status(403).json({ status: 'error', message: 'User is not active. Please login to continue' });
+          return res.status(403).json({ status: 'error', message: 'User is not active. Please contact administrator' });
         }
         req.user = user;
         return next(); 
@@ -49,7 +53,9 @@ exports.isRefreshTokenValid = async (req, res, next) => {
   try {
     // get refresh token from cookie
     const token = req.cookies.refreshToken;
-
+    if (!token) {
+    return res.status(403).json({ status: 'error', message: 'Refresh token is required' });
+  }
     // Verify refresh token
     jwt.verify(token, JWT_REFRESH_TOKEN_SECRET_KEY, async (err, decoded) => {
       if (err) {
@@ -67,7 +73,7 @@ exports.isRefreshTokenValid = async (req, res, next) => {
         if (!user.isActive) {
           return res.status(403).json({ 
             status: 'error', 
-            message: 'User is not active. Please login to continue' });
+            message: 'User is not active. Please contact administrator' });
         }
 
         req.user = user;  
@@ -130,4 +136,42 @@ exports.verifyTrainer = async (req, res, next) => {
     console.error(error);
     return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
+};
+// Helper: Auto refresh access token if expired and refresh token is valid
+const tryRefreshAccessToken = (req, res, next) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ status: 'error', message: 'Session expired. Please login again' });
+  }
+
+  jwt.verify(refreshToken, JWT_REFRESH_TOKEN_SECRET_KEY, async (err, dec) => {
+    if (err) {
+      // Refresh token is expired -> force user to logout and login again
+      return res.status(401).json({ status: 'error', message: 'Session expired. Please login again' });
+    }
+    try {
+      const user = await User.findById(dec.id);
+      if (!user) {
+        return res.status(404).json({ status: 'error', message: 'User not found with the provided token' });
+      }
+      if (!user.isActive) {
+        return res.status(403).json({ status: 'error', message: 'User is not active. Please contact administrator' });
+      }
+
+      // Provide new access token and overwrite the cookie
+      const newAccessToken = generateAccessToken(user._id);
+      res.cookie('accessToken', newAccessToken, {
+        expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
+        httpOnly: true,
+        sameSite: 'strict',
+      });
+
+      req.user = user;
+      return next(); 
+    } catch (dbError) {
+      console.error(dbError);
+      return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+    }
+  });
 };
