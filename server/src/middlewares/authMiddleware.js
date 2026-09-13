@@ -5,15 +5,12 @@ const { JWT_SECRET_KEY, JWT_REFRESH_TOKEN_SECRET_KEY } = require('../config/env'
 // Middleware for detecting authenticated logged-in user
 exports.isAuthenticatedUser = async (req, res, next) => {
   try {
-    // get access token form authorization headers
-    const { authorization } = req.headers;
+    // get access token from cookie
+    const accesstoken = req.cookies.accessToken;
 
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return res.status(401).json({ status: 'error', message: 'Authorization headers are required with Bearer token' });
+    if (!accesstoken) {
+      return res.status(403).json({ status: 'error', message: 'Access token is required' });
     }
-    // split token from authorization header
-    const accesstoken = authorization.split(' ')[1];
-
     // verify token
     jwt.verify(accesstoken, JWT_SECRET_KEY, async (err, dec) => {
       if (err) {
@@ -50,13 +47,8 @@ exports.isAuthenticatedUser = async (req, res, next) => {
 // Middleware for validating refresh token
 exports.isRefreshTokenValid = async (req, res, next) => {
   try {
-    const { authorization } = req.headers;
-
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return res.status(401).json({ status: 'error', message: 'Authorization headers are required with Bearer token' });
-    }
-
-    const token = authorization.split(' ')[1];
+    // get refresh token from cookie
+    const token = req.cookies.refreshToken;
 
     // Verify refresh token
     jwt.verify(token, JWT_REFRESH_TOKEN_SECRET_KEY, async (err, decoded) => {
