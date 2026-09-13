@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { BookOpen, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react'
 import { StatCard } from '../../components/ui/StatCard'
-import { Badge } from '../../components/ui/Badge'
 import { ProgressBar } from '../../components/ui/ProgressBar'
 import { useAuth } from '../../context/AuthContext'
 

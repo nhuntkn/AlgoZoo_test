@@ -54,7 +54,7 @@ const problemBankItems: ProblemBank[] = [
 
 
 export function ClassView() {
-  const { classId } = useParams()
+  useParams()
   const [selectedType, setSelectedType] = useState<ProblemType | null>(null)
   const [tab, setTab] = useState<'all' | 'pending' | 'reviewed'>('all')
   const [showProblemBank, setShowProblemBank] = useState(false)

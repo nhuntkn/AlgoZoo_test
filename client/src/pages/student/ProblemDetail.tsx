@@ -90,12 +90,9 @@ export function ProblemDetail() {
             <div className="flex justify-between items-center">
               <span className="text-gray-500">Status</span>
               <span className={`text-sm font-medium capitalize ${
-                problem.status === 'reviewed' ? 'text-green-600' :
-                problem.status === 'pending' ? 'text-yellow-600' :
-                'text-gray-400'
+                problem.status === 'not-started' ? 'text-gray-400' : 'text-gray-400'
               }`}>
-                {problem.status === 'not-started' ? 'Not started' :
-                 problem.status === 'pending' ? 'Pending review' : 'Reviewed'}
+                {problem.status === 'not-started' ? 'Not started' : 'Reviewed'}
               </span>
             </div>
           </div>

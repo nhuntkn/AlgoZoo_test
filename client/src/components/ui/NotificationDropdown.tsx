@@ -5,15 +5,6 @@ import { useAuth } from '../../context/AuthContext'
 import { useNotifications, formatRelative } from '../../context/NotificationContext'
 import type { Notification } from '../../context/NotificationContext'
 
-const typeIcon: Record<string, string> = {
-  SUBMISSION_CREATED: '📥',
-  SUBMISSION_RESUBMITTED: '🔁',
-  SUBMISSION_LATE: '⏰',
-  ASSIGNMENT_ASSIGNED: '📋',
-  SUBMISSION_SUCCESS: '✅',
-  GRADE_RELEASED: '🎓',
-}
-
 function NotifRow({ n, onClose }: { n: Notification; onClose: () => void }) {
   const { markRead } = useNotifications()
   const navigate = useNavigate()

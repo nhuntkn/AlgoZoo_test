@@ -161,7 +161,7 @@ export function ClassSubmissions() {
                   </span>
                 </div>
               </div>
-              <SubmissionTable rows={items} classId={classId} />
+              <SubmissionTable rows={items} />
             </div>
           ))}
           {Object.keys(groupedByProblem).length === 0 && (
@@ -175,7 +175,7 @@ export function ClassSubmissions() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <TableHeader />
           {filtered.map((s, i) => (
-            <SubmissionRow key={s.id} s={s} classId={classId} last={i === filtered.length - 1} />
+            <SubmissionRow key={s.id} s={s} last={i === filtered.length - 1} />
           ))}
           {filtered.length === 0 && (
             <div className="py-12 text-center text-sm text-gray-400">No submissions found</div>
@@ -196,7 +196,7 @@ function TableHeader() {
   )
 }
 
-function SubmissionTable({ rows, classId }: { rows: Submission[]; classId: string }) {
+function SubmissionTable({ rows }: { rows: Submission[] }) {
   return (
     <div>
       <div className="grid grid-cols-[1fr_110px_110px_100px] px-6 py-2.5 border-b border-gray-50 bg-white">
@@ -239,7 +239,7 @@ function SubmissionTable({ rows, classId }: { rows: Submission[]; classId: strin
   )
 }
 
-function SubmissionRow({ s, classId, last }: { s: Submission; classId: string; last: boolean }) {
+function SubmissionRow({ s, last }: { s: Submission; last: boolean }) {
   return (
     <div
       className={`grid grid-cols-[1fr_160px_110px_110px_100px] items-center px-6 py-4 hover:bg-gray-50 transition-colors ${

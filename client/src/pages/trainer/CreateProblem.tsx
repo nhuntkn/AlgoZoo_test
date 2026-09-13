@@ -82,7 +82,7 @@ export function CreateProblem() {
                   <Plus size={12} /> Add Example
                 </button>
               </div>
-              {examples.map((ex, i) => (
+              {examples.map((_, i) => (
                 <div key={i} className="border border-gray-200 rounded-lg p-4 mb-3 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -116,7 +116,7 @@ export function CreateProblem() {
                 <Plus size={12} /> Add Test Case
               </button>
             </div>
-            {testCases.map((tc, i) => (
+            {testCases.map((_, i) => (
               <div key={i} className="mb-3 space-y-2">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Input</label>

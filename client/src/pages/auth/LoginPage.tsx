@@ -1,21 +1,29 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import type { Role } from '../../context/AuthContext'
 
 export function LoginPage() {
-  const [username, setUsername] = useState('juliana123')
-  const [password, setPassword] = useState('password')
-  const [selectedRole, setSelectedRole] = useState<Role>('student')
-  const { setRole } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setRole(selectedRole)
-    if (selectedRole === 'student') navigate('/student/dashboard')
-    else if (selectedRole === 'admin') navigate('/admin/dashboard')
-    else navigate('/trainer/dashboard')
+    setIsSubmitting(true)
+
+    try {
+      const user = await login(email, password)
+
+      if (user.role === 'admin') navigate('/admin/dashboard')
+      else if (user.role === 'trainer') navigate('/trainer/dashboard')
+      else navigate('/student/dashboard')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Login failed')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -38,13 +46,13 @@ export function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Username</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Email</label>
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:border-accent/60 focus:bg-white transition-colors"
-                placeholder="your_username"
+                placeholder="you@example.com"
               />
             </div>
             <div>
@@ -57,23 +65,12 @@ export function LoginPage() {
                 placeholder="••••••••"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Demo Role</label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as Role)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50 focus:outline-none focus:border-accent/60"
-              >
-                <option value="student">Student</option>
-                <option value="trainer">Trainer</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
             <button
               type="submit"
-              className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-xl transition-colors mt-2"
+              disabled={isSubmitting}
+              className="w-full bg-accent hover:bg-accent-hover disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors mt-2"
             >
-              Login
+              {isSubmitting ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>

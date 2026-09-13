@@ -11,11 +11,13 @@ export interface User {
 
 interface AuthContextType {
   user: User
+  login: (email: string, password: string) => Promise<User>
   setRole: (role: Role) => void
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 const defaultUser: User = {
   name: 'Juliana Silva',
@@ -24,21 +26,65 @@ const defaultUser: User = {
   initials: 'JS',
 }
 
+const getInitials = (name?: string) => {
+  if (!name || typeof name !== 'string') return 'U'
+
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('')
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User>(defaultUser)
 
-  const setRole = (role: Role) => {
-    const names: Record<Role, { name: string; email: string; initials: string }> = {
-      student: { name: 'Juliana Silva', email: 'juliana@algozoo.com', initials: 'JS' },
-      trainer: { name: 'Nguyen Van Hung', email: 'hung@algozoo.com', initials: 'NH' },
-      admin: { name: 'Maya Tran', email: 'maya@algozoo.com', initials: 'MT' },
+  const login = async (email: string, password: string): Promise<User> => {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data?.result?.message || data?.message || 'Login failed')
     }
-    setUser({ role, ...names[role] })
+
+    const loggedInUser = data?.result?.data ?? {}
+    const nextUser: User = {
+      name: loggedInUser?.fullname || loggedInUser?.name || 'User',
+      email: loggedInUser?.email || '',
+      role: (loggedInUser?.role as Role) || 'student',
+      initials: getInitials(loggedInUser?.name),
+    }
+
+    setUser(nextUser)
+    return nextUser
   }
 
-  const logout = () => setUser(defaultUser)
+  const setRole = (role: Role) => {
+    setUser((current) => ({
+      ...current,
+      role,
+    }))
+  }
 
-  return <AuthContext.Provider value={{ user, setRole, logout }}>{children}</AuthContext.Provider>
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } finally {
+      setUser(defaultUser)
+    }
+  }
+
+  return <AuthContext.Provider value={{ user, login, setRole, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
