@@ -142,7 +142,6 @@ exports.register = async (req, res) => {
         await ClassMember.create([{
             classId: classDoc._id,
             userId: user._id,
-            role,
         }],
         { session });
 
