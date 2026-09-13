@@ -18,14 +18,14 @@ exports.register = async (req, res) => {
     session.startTransaction();
 
     try { 
-        const {token, username, password, fullname, email} = req.body; 
+        const {token, fullname, email, password} = req.body; 
             
         // 1. Validate required fields 
-        if (!token || !username || !password) {
+        if (!token || !fullname || !email || !password) {
             await session.endSession();
             return res.status(400).json({ 
                 status: 'error',
-                message: 'Token, username and password are required' }); 
+                message: 'Token, fullname, email and password are required' }); 
             }
 
         // 2. Validate email format 
@@ -71,11 +71,10 @@ exports.register = async (req, res) => {
         // 5. Automatically get role from token match
         const role = token === classDoc.studentJoinToken ? 'student' : 'trainer';
 
-        // 6. Check if user already exists
-        const trimmedUsername = username.trim();
+        // 6. Check if user already exists by email
         const formattedEmail = email ? email.trim().toLowerCase() : null;
 
-        let user = await User.findOne({ username: trimmedUsername }).select('+password').session(session);
+        let user = await User.findOne({ email: formattedEmail }).select('+password').session(session);
 
         if (!user && formattedEmail) {
             //Check if email belong to another existing account
@@ -130,7 +129,6 @@ exports.register = async (req, res) => {
             //Pass session into create() using array syntax
             const [newUser] = await User.create([{
                 fullname: fullname.trim(),
-                username: username.trim(),
                 password: password,
                 email: email ? email.trim().toLowerCase() : undefined,
                 role: role,
@@ -179,7 +177,6 @@ exports.register = async (req, res) => {
                 user: {
                     id: user._id,
                     fullname: user.fullname,
-                    username: user.username,
                     email: user.email,
                     role: user.role,
                     isActive: user.isActive,
@@ -218,15 +215,15 @@ exports.register = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
     try {
-        const { username, password } = req.body;
-        // validate username and password
-        if (!username || !password) {
+        const { email, password } = req.body;
+        // validate email and password
+        if (!email || !password) {
             return res.status(400).json({ 
                 status: 'error', 
-                message: 'Username and password are required' });
+                message: 'Email and password are required' });
         }
         // check if user exists
-        const user = await User.findOne({ username: username.trim() }).select('+password');
+        const user = await User.findOne({ email: email.trim() }).select('+password');
         if (!user) {
         return res.status(404).json({ 
             status: 'error', 
