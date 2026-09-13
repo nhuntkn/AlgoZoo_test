@@ -7,14 +7,6 @@ const UserSchema = new mongoose.Schema(
       required: [true, 'Full name is required'],
       type: String,
     },
-    username: {
-      required: [true, "Username is required"],
-      type: String,
-      unique: true,
-      minLength: [5, "Username must be at least 5 characters"],
-      maxLength: [25, "Username cannot exceed 25 characters"],
-      trim: true,
-    },
     email: {
       required: [true, 'Email is required'],
       type: String,
@@ -42,12 +34,6 @@ const UserSchema = new mongoose.Schema(
 );
 
 
-// Replace spaces with dashes in username before saving
-UserSchema.pre('save', function () {
-  if (this.username) {
-    this.username = this.username.replace(/\s/g, '-');
-  }
-});
 
 // Hash password before saving the document
 UserSchema.pre('save', async function () {

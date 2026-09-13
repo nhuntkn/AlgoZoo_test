@@ -35,7 +35,6 @@ const loginResponse = (res, user) => {
         data: {
           id: user._id,
           fullname: user.fullname,
-          username: user.username,
           email: user.email,
           isActive: user.isActive,
           role: user.role,
