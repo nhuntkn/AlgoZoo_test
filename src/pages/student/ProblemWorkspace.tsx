@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ChevronLeft, ChevronRight, ExternalLink,
   Plus, Trash2, Code2, FileText, ImageIcon, Paperclip, Send, CheckCircle2,
+  Clock, MessageSquare,
 } from 'lucide-react'
 import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -12,7 +13,7 @@ const problemData: Record<string, {
   title: string; type: string; difficulty: 'Easy' | 'Medium' | 'Hard';
   deadline: string; description: string; constraints: string[]; examples: { input: string; output: string }[];
   resource_url: string; status: 'not-started' | 'pending' | 'reviewed'; isPastDeadline: boolean;
-  feedback?: { trainer: string; reviewedAt: string; text: string }
+  feedback?: { trainer: string; trainerInitials: string; reviewedAt: string; text: string }
 }> = {
   '1': {
     title: 'Two Sum', type: 'DSA', difficulty: 'Easy', deadline: 'September 20, 2026',
@@ -21,7 +22,7 @@ const problemData: Record<string, {
     examples: [{ input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' }, { input: 'nums = [3,2,4], target = 6', output: '[1,2]' }],
     resource_url: 'https://leetcode.com/problems/two-sum/',
     status: 'reviewed', isPastDeadline: false,
-    feedback: { trainer: 'Alex Nguyen', reviewedAt: 'Sep 15, 2026', text: 'Great use of hash map for O(n) solution! The code is clean and readable. Consider adding a comment about the time/space complexity trade-off.' },
+    feedback: { trainer: 'Alex Nguyen', trainerInitials: 'AN', reviewedAt: 'Sep 15, 2026', text: 'Great use of hash map for O(n) solution! The code is clean and readable. Consider adding a comment about the time/space complexity trade-off.' },
   },
   '2': {
     title: 'Binary Search', type: 'DSA', difficulty: 'Easy', deadline: 'September 22, 2026',
@@ -73,8 +74,6 @@ type Block =
   | { id: number; type: 'image'; filename: string; dataUrl: string }
   | { id: number; type: 'file'; filename: string }
 
-type WorkspaceTab = 'description' | 'solution' | 'feedback'
-
 let nextId = 1
 
 export function ProblemWorkspace() {
@@ -84,7 +83,6 @@ export function ProblemWorkspace() {
   const className = 'WeCamp Batch 22'
   const { addNotification } = useNotifications()
 
-  const [tab, setTab] = useState<WorkspaceTab>('description')
   const [blocks, setBlocks] = useState<Block[]>([])
   const [submitted, setSubmitted] = useState(problem.status !== 'not-started')
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -101,12 +99,8 @@ export function ProblemWorkspace() {
       return [...prev, { id, type: 'file', filename: '' }]
     })
     setShowAddMenu(false)
-    if (type === 'image') {
-      setTimeout(() => imageRefs.current[id]?.click(), 50)
-    }
-    if (type === 'file') {
-      setTimeout(() => fileRefs.current[id]?.click(), 50)
-    }
+    if (type === 'image') setTimeout(() => imageRefs.current[id]?.click(), 50)
+    if (type === 'file') setTimeout(() => fileRefs.current[id]?.click(), 50)
   }
 
   const removeBlock = (id: number) => setBlocks((prev) => prev.filter((b) => b.id !== id))
@@ -133,48 +127,33 @@ export function ProblemWorkspace() {
 
   const handleSubmit = () => {
     setSubmitted(true)
-
     const notifContext = `${className} · ${problem.type}`
-    const submissionId = problemId  // mock: submission id = problem id
-
-    // Notify trainer: new submission (or late submission)
+    const submissionId = problemId
     if (problem.isPastDeadline) {
       addNotification({
-        recipientRole: 'trainer',
-        type: 'SUBMISSION_LATE',
+        recipientRole: 'trainer', type: 'SUBMISSION_LATE',
         title: 'Late submission',
         message: `Juliana Silva submitted ${problem.title} after the deadline`,
-        context: notifContext,
-        entityType: 'submission',
-        entityId: submissionId,
+        context: notifContext, entityType: 'submission', entityId: submissionId,
         linkTo: `/trainer/submissions/${submissionId}`,
       })
     } else {
       addNotification({
-        recipientRole: 'trainer',
-        type: 'SUBMISSION_CREATED',
+        recipientRole: 'trainer', type: 'SUBMISSION_CREATED',
         title: 'New submission',
         message: `Juliana Silva submitted ${problem.title}`,
-        context: notifContext,
-        entityType: 'submission',
-        entityId: submissionId,
+        context: notifContext, entityType: 'submission', entityId: submissionId,
         linkTo: `/trainer/submissions/${submissionId}`,
       })
     }
-
-    // Notify student: submission successful
     addNotification({
-      recipientRole: 'student',
-      type: 'SUBMISSION_SUCCESS',
+      recipientRole: 'student', type: 'SUBMISSION_SUCCESS',
       title: 'Submission successful',
       message: `Your submission for ${problem.title} was submitted successfully.`,
-      context: notifContext,
-      entityType: 'submission',
-      entityId: submissionId,
+      context: notifContext, entityType: 'submission', entityId: submissionId,
       linkTo: `/student/submissions/${submissionId}`,
     })
-
-    navigate(`/student/submissions`)
+    navigate('/student/submissions')
   }
 
   const hasContent = blocks.length > 0 && blocks.some((b) => {
@@ -184,9 +163,11 @@ export function ProblemWorkspace() {
     return false
   })
 
+  const isReviewed = problem.status === 'reviewed' && !!problem.feedback
+
   return (
     <div>
-      {/* Back + Breadcrumb */}
+      {/* Breadcrumb */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <Link
           to={`/student/classes/${classId}/problems`}
@@ -195,7 +176,7 @@ export function ProblemWorkspace() {
           <ChevronLeft size={16} /> Back to Problems
         </Link>
         <span className="text-gray-200">|</span>
-        <div className="flex items-center gap-1.5 text-sm text-gray-400">
+        <div className="flex items-center gap-1.5 text-sm text-gray-400 flex-wrap">
           <Link to="/student/classes" className="hover:text-accent">My Classes</Link>
           <ChevronRight size={13} className="text-gray-300" />
           <Link to={`/student/classes/${classId}/overview`} className="hover:text-accent">{className}</Link>
@@ -207,268 +188,288 @@ export function ProblemWorkspace() {
       </div>
 
       {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{problem.title}</h1>
+          <p className="text-sm text-gray-400 mt-0.5">{className} · Deadline: {problem.deadline}</p>
+        </div>
+        <div className="flex items-center gap-2">
           <TypeBadge type={problem.type} />
           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
             {problem.difficulty}
           </span>
           {problem.isPastDeadline && <Badge variant="late">Deadline passed</Badge>}
+          {submitted && (
+            isReviewed
+              ? <Badge variant="reviewed">Reviewed</Badge>
+              : <Badge variant="pending">Pending Review</Badge>
+          )}
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">{problem.title}</h1>
-        {problem.deadline && <p className="text-sm text-gray-400 mt-1">Deadline: {problem.deadline}</p>}
       </div>
 
-      <div className="flex gap-5">
-        {/* Main */}
-        <div className="flex-1 min-w-0">
-          {/* Tab strip */}
-          <div className="flex gap-0 border-b border-gray-200 mb-5">
-            {(['description', 'solution', 'feedback'] as WorkspaceTab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
-                  tab === t ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {t === 'solution' ? 'My Solution' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
+      {/* Two-column layout */}
+      <div className="flex gap-5 items-start">
 
-          {/* ── Description ── */}
-          {tab === 'description' && (
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{problem.description}</p>
-                </div>
-                {problem.constraints.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Constraints</h3>
-                    <ul className="space-y-1">
-                      {problem.constraints.map((c, i) => (
-                        <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                          <span className="text-gray-300 mt-0.5">•</span>{c}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {problem.examples.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Examples</h3>
-                    <div className="space-y-2">
-                      {problem.examples.map((ex, i) => (
-                        <div key={i} className="bg-gray-50 rounded-xl p-3 text-sm font-mono">
-                          <p className="text-gray-500">Input: <span className="text-gray-800">{ex.input}</span></p>
-                          <p className="text-gray-500">Output: <span className="text-gray-800">{ex.output}</span></p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+        {/* LEFT: problem + solution */}
+        <div className="flex-1 min-w-0 space-y-3">
+
+          {/* Problem description card */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <FileText size={13} className="text-gray-400" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Problem</span>
+              <span className="ml-1 text-xs font-bold text-gray-700">{problem.title}</span>
+              <div className="ml-auto flex items-center gap-2">
+                <TypeBadge type={problem.type} />
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
+                  {problem.difficulty}
+                </span>
               </div>
-              {problem.resource_url && (
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
-                  <ExternalLink size={16} className="text-blue-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">Resource Link</p>
-                    <a href={problem.resource_url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline break-all">
-                      {problem.resource_url}
-                    </a>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{problem.description}</p>
+
+              {problem.constraints.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1.5">Constraints</p>
+                  <ul className="space-y-1">
+                    {problem.constraints.map((c, i) => (
+                      <li key={i} className="text-xs text-gray-600 flex gap-2">
+                        <span className="text-gray-300 flex-shrink-0">•</span>{c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {problem.examples.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1.5">Examples</p>
+                  <div className="space-y-1.5">
+                    {problem.examples.map((ex, i) => (
+                      <div key={i} className="bg-gray-50 rounded-xl px-3 py-2 text-xs font-mono">
+                        <p className="text-gray-500">Input: <span className="text-gray-800">{ex.input}</span></p>
+                        <p className="text-gray-500">Output: <span className="text-gray-800">{ex.output}</span></p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-              <Button onClick={() => setTab('solution')} className="w-full justify-center">
-                Go to My Solution →
+
+              {problem.resource_url && (
+                <a
+                  href={problem.resource_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                >
+                  View resource <ExternalLink size={11} />
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* "My Solution" section label */}
+          <div className="flex items-center gap-2 px-1 pt-1">
+            <div className="w-7 h-7 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+              ME
+            </div>
+            <span className="text-sm font-semibold text-gray-700">My Solution</span>
+            {submitted && (
+              <span className="ml-1 inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">
+                <CheckCircle2 size={11} /> Submitted
+              </span>
+            )}
+          </div>
+
+          {/* Blocks */}
+          {blocks.map((block) => (
+            <BlockEditor
+              key={block.id}
+              block={block}
+              disabled={submitted}
+              onUpdate={(patch) => updateBlock(block.id, patch)}
+              onRemove={() => removeBlock(block.id)}
+              imageRef={(el) => { imageRefs.current[block.id] = el }}
+              fileRef={(el) => { fileRefs.current[block.id] = el }}
+              onImageUpload={(e) => handleImageUpload(block.id, e)}
+              onFileUpload={(e) => handleFileUpload(block.id, e)}
+            />
+          ))}
+
+          {/* Empty submitted state */}
+          {blocks.length === 0 && submitted && (
+            <div className="bg-white rounded-2xl shadow-sm py-10 text-center text-sm text-gray-400">
+              No content blocks recorded for this submission.
+            </div>
+          )}
+
+          {/* Add content */}
+          {!submitted && (
+            <div className="relative" ref={addMenuRef}>
+              {showAddMenu ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Add content block</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {([
+                      { type: 'text' as BlockType, icon: <FileText size={15} />, label: 'Text' },
+                      { type: 'code' as BlockType, icon: <Code2 size={15} />, label: 'Code' },
+                      { type: 'image' as BlockType, icon: <ImageIcon size={15} />, label: 'Image' },
+                      { type: 'file' as BlockType, icon: <Paperclip size={15} />, label: 'File' },
+                    ]).map(({ type, icon, label }) => (
+                      <button
+                        key={type}
+                        onClick={() => addBlock(type)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-accent/10 hover:text-accent border border-gray-200 hover:border-accent/30 rounded-xl text-sm font-medium text-gray-700 transition-colors"
+                      >
+                        {icon} {label}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setShowAddMenu(false)}
+                      className="ml-auto px-4 py-2.5 text-sm text-gray-400 hover:text-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAddMenu(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-sm font-medium text-gray-400 hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-colors"
+                >
+                  <Plus size={16} /> Add content
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Submit bar */}
+          {!submitted && (
+            <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm px-5 py-4">
+              <p className="text-sm text-gray-400">
+                {!hasContent
+                  ? 'Add at least one content block before submitting.'
+                  : 'Ready to submit. You can only submit once.'}
+              </p>
+              <Button onClick={handleSubmit} disabled={!hasContent}>
+                <Send size={14} /> Submit
               </Button>
             </div>
           )}
-
-          {/* ── My Solution (block editor) ── */}
-          {tab === 'solution' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-base font-bold text-gray-900">My Submission</h2>
-                {submitted && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-xl font-medium">
-                    <CheckCircle2 size={13} /> Submitted
-                  </span>
-                )}
-              </div>
-
-              {/* Blocks */}
-              {blocks.map((block) => (
-                <BlockEditor
-                  key={block.id}
-                  block={block}
-                  disabled={submitted}
-                  onUpdate={(patch) => updateBlock(block.id, patch)}
-                  onRemove={() => removeBlock(block.id)}
-                  imageRef={(el) => { imageRefs.current[block.id] = el }}
-                  fileRef={(el) => { fileRefs.current[block.id] = el }}
-                  onImageUpload={(e) => handleImageUpload(block.id, e)}
-                  onFileUpload={(e) => handleFileUpload(block.id, e)}
-                />
-              ))}
-
-              {/* Add content */}
-              {!submitted && (
-                <div className="relative" ref={addMenuRef}>
-                  {showAddMenu ? (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Add content block</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {([
-                          { type: 'text' as BlockType, icon: <FileText size={15} />, label: 'Text' },
-                          { type: 'code' as BlockType, icon: <Code2 size={15} />, label: 'Code' },
-                          { type: 'image' as BlockType, icon: <ImageIcon size={15} />, label: 'Image' },
-                          { type: 'file' as BlockType, icon: <Paperclip size={15} />, label: 'File' },
-                        ]).map(({ type, icon, label }) => (
-                          <button
-                            key={type}
-                            onClick={() => addBlock(type)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-accent/10 hover:text-accent border border-gray-200 hover:border-accent/30 rounded-xl text-sm font-medium text-gray-700 transition-colors"
-                          >
-                            {icon} {label}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setShowAddMenu(false)}
-                          className="ml-auto px-4 py-2.5 text-sm text-gray-400 hover:text-gray-600"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowAddMenu(true)}
-                      className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-sm font-medium text-gray-400 hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-colors"
-                    >
-                      <Plus size={16} /> Add content
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Submit bar */}
-              {!submitted && (
-                <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm px-5 py-4 mt-2">
-                  <p className="text-sm text-gray-400">
-                    {!hasContent
-                      ? 'Add at least one content block before submitting.'
-                      : 'Ready to submit. You can only submit once.'}
-                  </p>
-                  <Button onClick={handleSubmit} disabled={!hasContent}>
-                    <Send size={14} /> Submit
-                  </Button>
-                </div>
-              )}
-
-              {blocks.length === 0 && submitted && (
-                <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-sm text-gray-400">
-                  No content blocks were added before submission.
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Feedback ── */}
-          {tab === 'feedback' && (
-            <div>
-              {problem.status !== 'reviewed' || !problem.feedback ? (
-                <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
-                  {problem.status === 'not-started' ? (
-                    <>
-                      <p className="text-gray-500 font-medium mb-1">Not submitted yet</p>
-                      <p className="text-sm text-gray-400">Submit your solution to receive feedback from your trainer.</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="text-yellow-600 text-xl">◷</span>
-                      </div>
-                      <p className="text-gray-700 font-semibold mb-1">Pending Review</p>
-                      <p className="text-sm text-gray-400">Your trainer will review and provide feedback soon.</p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl shadow-sm p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-accent text-white text-xs flex items-center justify-center font-bold">AN</div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{problem.feedback.trainer}</p>
-                      <p className="text-xs text-gray-400">Reviewed on {problem.feedback.reviewedAt}</p>
-                    </div>
-                    <div className="ml-auto flex items-center">
-                      <Badge variant="reviewed">Reviewed</Badge>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <p className="text-sm text-gray-700 leading-relaxed">{problem.feedback.text}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Sidebar */}
-        <div className="w-60 flex-shrink-0 space-y-4">
-          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 text-sm">
-            <h3 className="font-semibold text-gray-800">Problem Info</h3>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500">Topic</span>
-              <div className="flex items-center"><TypeBadge type={problem.type} /></div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500">Difficulty</span>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
-                {problem.difficulty}
-              </span>
-            </div>
-            {problem.deadline && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Deadline</span>
-                <span className={`text-xs font-medium ${problem.isPastDeadline ? 'text-red-500' : 'text-gray-700'}`}>
-                  {problem.deadline}
+        {/* RIGHT sidebar */}
+        <div className="w-[300px] flex-shrink-0 space-y-4 sticky top-4">
+
+          {/* Problem info */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <h3 className="font-semibold text-gray-800 text-sm">Problem Info</h3>
+            <InfoRow
+              label="Topic"
+              value={<TypeBadge type={problem.type} />}
+            />
+            <InfoRow
+              label="Difficulty"
+              value={
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
+                  {problem.difficulty}
                 </span>
-              </div>
+              }
+            />
+            {problem.deadline && (
+              <InfoRow
+                label="Deadline"
+                value={
+                  <span className={`text-sm font-medium ${problem.isPastDeadline ? 'text-red-500' : 'text-gray-900'}`}>
+                    {problem.deadline}
+                  </span>
+                }
+              />
             )}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500">Status</span>
-              <span className={`text-xs font-medium ${
-                problem.status === 'reviewed' ? 'text-green-600' :
-                problem.status === 'pending' ? 'text-yellow-600' : 'text-gray-400'
-              }`}>
-                {problem.status === 'not-started' ? 'Not started' :
-                 problem.status === 'pending' ? 'Pending review' : 'Reviewed'}
-              </span>
-            </div>
+            <InfoRow
+              label="Status"
+              value={
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {isReviewed
+                    ? <CheckCircle2 size={13} className="text-green-500" />
+                    : submitted
+                      ? <Clock size={13} className="text-yellow-500" />
+                      : <div className="w-3 h-3 rounded-full bg-gray-200" />
+                  }
+                  <span className={`text-sm font-medium ${
+                    isReviewed ? 'text-green-700' :
+                    submitted ? 'text-yellow-700' : 'text-gray-400'
+                  }`}>
+                    {isReviewed ? 'Reviewed' : submitted ? 'Pending review' : 'Not started'}
+                  </span>
+                </div>
+              }
+            />
           </div>
 
+          {/* Feedback card */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-gray-400" />
+              <h3 className="font-semibold text-gray-800 text-sm">Trainer Feedback</h3>
+            </div>
+
+            {isReviewed && problem.feedback ? (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+                    {problem.feedback.trainerInitials}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{problem.feedback.trainer}</p>
+                    <p className="text-xs text-gray-400">{problem.feedback.reviewedAt}</p>
+                  </div>
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed">
+                  {problem.feedback.text}
+                </div>
+              </>
+            ) : submitted ? (
+              <div className="flex flex-col items-center gap-2 py-4 text-center">
+                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                  <Clock size={16} className="text-gray-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-500">Waiting for feedback</p>
+                <p className="text-xs text-gray-400">Your trainer will review your submission and leave feedback here.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-4 text-center">
+                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                  <MessageSquare size={16} className="text-gray-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-500">Not submitted yet</p>
+                <p className="text-xs text-gray-400">Submit your solution to receive feedback from your trainer.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Submit shortcut when not yet submitted */}
           {!submitted && (
-            <Button className="w-full justify-center" onClick={() => setTab('solution')}>
-              <Send size={14} /> Go to Submit
+            <Button
+              className="w-full justify-center"
+              onClick={handleSubmit}
+              disabled={!hasContent}
+            >
+              <Send size={14} /> Submit Solution
             </Button>
-          )}
-          {submitted && problem.status === 'pending' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-yellow-700 font-medium">Pending review</p>
-            </div>
-          )}
-          {submitted && problem.status === 'reviewed' && (
-            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-green-700 font-medium">Reviewed ✓</p>
-            </div>
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <div className="text-sm font-medium text-gray-900">{value}</div>
     </div>
   )
 }
@@ -530,7 +531,7 @@ function BlockEditor({
                 {LANGUAGES.map((l) => <option key={l}>{l}</option>)}
               </select>
             ) : (
-              <span className="text-xs text-gray-500 capitalize">{block.language}</span>
+              <span className="text-xs text-gray-500">{block.language}</span>
             )}
             {!disabled && (
               <button onClick={onRemove} className="text-gray-600 hover:text-red-400 transition-colors ml-1">
@@ -573,16 +574,12 @@ function BlockEditor({
             <img src={block.dataUrl} alt={block.filename} className="max-h-64 rounded-lg object-contain" />
           ) : (
             !disabled && (
-              <button
-                onClick={() => {
-                  const el = document.querySelector(`input[data-imgid="${block.id}"]`) as HTMLInputElement
-                  el?.click()
-                }}
-                className="w-full border-2 border-dashed border-gray-200 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-400 hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-colors"
+              <div
+                className="w-full border-2 border-dashed border-gray-200 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-400 hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-colors cursor-pointer"
               >
                 <ImageIcon size={24} />
                 <span className="text-sm">Click to upload image</span>
-              </button>
+              </div>
             )
           )}
         </div>
@@ -616,10 +613,7 @@ function BlockEditor({
             </div>
           ) : (
             !disabled && (
-              <button
-                onClick={() => fileRef && (document.querySelector(`input[data-fileid="${block.id}"]`) as HTMLInputElement)?.click()}
-                className="text-sm text-accent font-semibold hover:underline flex items-center gap-1.5"
-              >
+              <button className="text-sm text-accent font-semibold hover:underline flex items-center gap-1.5">
                 <Paperclip size={14} /> Select file to attach
               </button>
             )

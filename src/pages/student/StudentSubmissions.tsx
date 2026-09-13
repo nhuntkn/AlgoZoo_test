@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Inbox } from 'lucide-react'
+import { Inbox, Trash2 } from 'lucide-react'
 import { TypeBadge, StatusDot } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 
@@ -82,7 +83,10 @@ const statusDotKey: Record<SubmissionStatus, string> = {
 }
 
 export function StudentSubmissions() {
-  if (submissions.length === 0) {
+  const [items, setItems] = useState<SubmissionItem[]>(submissions)
+  const [deleteTarget, setDeleteTarget] = useState<SubmissionItem | null>(null)
+
+  if (items.length === 0) {
     return (
       <div>
         <div className="mb-6">
@@ -108,16 +112,16 @@ export function StudentSubmissions() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-[1fr_100px_120px_160px_100px_80px] border-b border-gray-100 px-6 py-3">
+        <div className="grid grid-cols-[1fr_100px_120px_160px_100px_100px] border-b border-gray-100 px-6 py-3">
           {['PROBLEM', 'TYPE', 'CLASS', 'STATUS', 'SUBMITTED', ''].map((h, i) => (
             <span key={i} className="text-[10px] font-bold text-gray-400 tracking-widest">{h}</span>
           ))}
         </div>
-        {submissions.map((s, i) => (
+        {items.map((s, i) => (
           <div
             key={s.id}
-            className={`grid grid-cols-[1fr_100px_120px_160px_100px_80px] items-center px-6 py-4 hover:bg-gray-50 transition-colors ${
-              i < submissions.length - 1 ? 'border-b border-gray-50' : ''
+            className={`group grid grid-cols-[1fr_100px_120px_160px_100px_100px] items-center px-6 py-4 hover:bg-gray-50 transition-colors ${
+              i < items.length - 1 ? 'border-b border-gray-50' : ''
             }`}
           >
             <div>
@@ -140,16 +144,62 @@ export function StudentSubmissions() {
               </span>
             </div>
             <span className="text-sm text-gray-400">{s.submittedAt ?? '—'}</span>
-            <div>
+            <div className="flex items-center gap-2">
               {s.status !== 'NOT_STARTED' && (
                 <Link to={`/student/submissions/${s.id}`}>
                   <button className="text-xs text-accent font-semibold hover:underline">View</button>
                 </Link>
               )}
+              {s.status === 'PENDING' && (
+                <button
+                  onClick={() => setDeleteTarget(s)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-6 h-6 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <Trash2 size={18} className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Delete this submission?</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Your submission for <span className="font-medium text-gray-800">"{deleteTarget.problem}"</span> will be permanently deleted. You can submit a new one afterward.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setItems((prev) => prev.filter((s) => s.id !== deleteTarget.id))
+                    setDeleteTarget(null)
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
