@@ -11,6 +11,7 @@ const authRoute = require('../routes/authRoutes');
 const adminRoute = require('../routes/adminRoutes');
 const trainerRoute = require('../routes/trainerRoutes');
 const problemRoute = require('../routes/problemRoutes');
+const classRoute = require('../routes/classRoutes');
 
 // initialize express app
 const app = express();
@@ -39,5 +40,6 @@ app.use('/api', authRoute); // auth routes
 app.use('/api', adminRoute); // admin routes
 app.use('/api', trainerRoute); // trainer routes
 app.use('/api', problemRoute); // problem bank routes
+app.use('/api/classes', classRoute); // class routes
 
 module.exports=app

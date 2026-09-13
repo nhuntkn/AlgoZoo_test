@@ -54,8 +54,7 @@ const SubmissionSchema = new mongoose.Schema(
     feedback: { type: String, default: '' },
     reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     reviewed_at: { type: Date, default: null },
-    submitted_at: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
-module.exports = mongoose.model('Submission', SubmissionSchema)
+module.exports = mongoose.model('Submission', SubmissionSchema);

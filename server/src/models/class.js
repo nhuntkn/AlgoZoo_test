@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 
 const ClassSchema = new mongoose.Schema(
   {
-    className: {
+    name: {
       type: String,
       required: [true, 'Class name is required'],
       maxLength: [200, 'Class name cannot exceed 200 characters'],
     },
-    classDesc: {
+    description: {
       type: String,
       default: '',
     },

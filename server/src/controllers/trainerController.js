@@ -4,7 +4,7 @@ const ClassMember = require('../models/classMember');
 const ClassProblem = require('../models/classProblem');
 const Problem = require('../models/problem');
 const Submission = require('../models/submission');
-const { checkTrainerOwnsClass } = require('../ultils/classOwnership');
+const { checkTrainerOwnsClass } = require('../utils/classOwnership');
 
 // Helper: class ids a trainer belongs to
 const getTrainerClassIds = async (trainerId) => {
@@ -55,7 +55,7 @@ exports.getClasses = async (req, res) => {
         const studentCount = members.filter((m) => m.userId && m.userId.role === 'student').length;
         return {
           class_id: cls._id,
-          className: cls.className,
+          className: cls.name,
           student_count: studentCount,
         };
       })
@@ -88,7 +88,7 @@ exports.getClassDetail = async (req, res) => {
     // Always computed live from ClassProblem — reflects new assignments immediately,
     // never a cached/stale count.
     const classProblemIds = await ClassProblem.find({ class_id }).distinct('_id');
-    const members = await ClassMember.find({ classId: class_id }).populate('userId', 'name role');
+    const members = await ClassMember.find({ classId: class_id }).populate('userId', 'fullname role');
     const students = members.filter((m) => m.userId && m.userId.role === 'student');
 
     const studentData = await Promise.all(
@@ -100,7 +100,7 @@ exports.getClassDetail = async (req, res) => {
         });
         return {
           user_id: m.userId._id,
-          name: m.userId.name,
+          name: m.userId.fullname,
           completed_tasks: completedTasks,
         };
       })
@@ -111,7 +111,7 @@ exports.getClassDetail = async (req, res) => {
       message: 'Class detail retrieved successfully',
       data: {
         class_id: cls._id,
-        className: cls.className,
+        className: cls.name,
         total_problems: classProblemIds.length,
         students: studentData,
       },
@@ -307,12 +307,12 @@ exports.getSubmissions = async (req, res) => {
     if (status) query.status = status;
 
     const submissions = await Submission.find(query)
-      .populate('student_id', 'name')
+      .populate('student_id', 'fullname')
       .populate({ path: 'class_problem_id', populate: { path: 'problem_id', select: 'title' } });
 
     const data = submissions.map((s) => ({
       submission_id: s._id,
-      student: s.student_id ? { id: s.student_id._id, name: s.student_id.name } : null,
+      student: s.student_id ? { id: s.student_id._id, name: s.student_id.fullname } : null,
       problem: s.class_problem_id && s.class_problem_id.problem_id
         ? { id: s.class_problem_id.problem_id._id, title: s.class_problem_id.problem_id.title }
         : null,
@@ -332,7 +332,7 @@ exports.getSubmissionDetail = async (req, res) => {
     const { submission_id } = req.params;
 
     const submission = await Submission.findById(submission_id)
-      .populate('student_id', 'name')
+      .populate('student_id', 'fullname')
       .populate({ path: 'class_problem_id', populate: { path: 'problem_id', select: 'title' } });
 
     if (!submission) {
@@ -350,13 +350,13 @@ exports.getSubmissionDetail = async (req, res) => {
       data: {
         submission_id: submission._id,
         content_blocks: submission.content_blocks,
-        student: submission.student_id ? { id: submission.student_id._id, name: submission.student_id.name } : null,
+        student: submission.student_id ? { id: submission.student_id._id, name: submission.student_id.fullname } : null,
         problem: submission.class_problem_id && submission.class_problem_id.problem_id
           ? { id: submission.class_problem_id.problem_id._id, title: submission.class_problem_id.problem_id.title }
           : null,
         status: submission.status,
         feedback: submission.feedback,
-        submitted_at: submission.submitted_at,
+        submitted_at: submission.createdAt, // submission has no dedicated submitted_at field; createdAt (from timestamps) serves that purpose
       },
     });
   } catch (error) {
