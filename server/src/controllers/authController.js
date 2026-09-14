@@ -303,3 +303,31 @@ exports.refreshToken = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
+/**
+ * Controller to get currently authenticated user (dùng khi frontend refresh page)
+ * GET /routes/auth/me
+ */
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const { user } = req;
+    
+    return res.status(200).json({
+      status: 'success',
+      message: 'Current user retrieved successfully',
+      data: {
+        user: {
+          id: user._id,
+          fullname: user.fullname,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+  }
+};
