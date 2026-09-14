@@ -30,8 +30,8 @@ import { ReviewSubmission } from './pages/trainer/ReviewSubmission'
 
 // Admin
 import { AdminDashboard } from './pages/admin/AdminDashboard'
+import { AdminClasses } from './pages/admin/AdminClasses'
 import { AdminUsers } from './pages/admin/AdminUsers'
-import { AdminProblems } from './pages/admin/AdminProblems'
 import { ManageClass } from './pages/admin/ManageClass'
 
 function RoleRedirect() {
@@ -74,9 +74,9 @@ function AppRoutes() {
 
         {/* Admin */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/classes/:classId/manage" element={<ManageClass />} />
         <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/problems" element={<AdminProblems />} />
 
         {/* Notifications (all roles) */}
         <Route path="/notifications" element={<NotificationsPage />} />

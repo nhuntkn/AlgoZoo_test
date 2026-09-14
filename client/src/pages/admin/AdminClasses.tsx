@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Search, Plus, Pencil, Trash2, UserPlus, CalendarDays, Users, X, CheckCircle2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Search, Plus, Pencil, Trash2, UserPlus, CalendarDays, Users, X, CheckCircle2, Settings2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ProgressBar } from '../../components/ui/ProgressBar'
@@ -138,9 +139,16 @@ export function AdminClasses() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"><Pencil size={14} /></button>
-                <button onClick={() => toggleStatus(c.id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-accent"><UserPlus size={14} /></button>
-                <button onClick={() => openDelete(c)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
+                <Link
+                  to={`/admin/classes/${c.id}/manage`}
+                  className="p-1.5 rounded-lg hover:bg-accent/10 text-gray-400 hover:text-accent transition-colors"
+                  title="Manage class"
+                >
+                  <Settings2 size={14} />
+                </Link>
+                <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"><Pencil size={14} /></button>
+                <button onClick={() => toggleStatus(c.id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-accent transition-colors"><UserPlus size={14} /></button>
+                <button onClick={() => openDelete(c)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
               </div>
             </div>
             <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
