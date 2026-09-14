@@ -249,6 +249,25 @@ exports.loginUser = async (req, res) => {
     }
 };
 
+/**
+ * Return the currently authenticated user.
+ * GET /routes/auth/me
+ */
+exports.getCurrentUser = async (req, res) => {
+    return res.status(200).json({
+        status: 'success',
+        data: {
+            id: req.user._id,
+            fullname: req.user.fullname,
+            email: req.user.email,
+            isActive: req.user.isActive,
+            role: req.user.role,
+            createdAt: req.user.createdAt,
+            updatedAt: req.user.updatedAt,
+        },
+    });
+};
+
 /** 
  * Controller for logout
  * POST /routes/auth/logout

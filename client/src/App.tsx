@@ -34,7 +34,8 @@ import { AdminProblems } from './pages/admin/AdminProblems'
 import { ManageClass } from './pages/admin/ManageClass'
 
 function RequireAuth() {
-  const { user } = useAuth()
+  const { user, authLoading } = useAuth()
+  if (authLoading) return null
   return user ? <Outlet /> : <Navigate to="/login" replace />
 }
 

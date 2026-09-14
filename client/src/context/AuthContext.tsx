@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
 export type Role = 'student' | 'trainer' | 'admin'
 
@@ -11,6 +11,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null
+  authLoading: boolean
   login: (email: string, password: string) => Promise<User>
   register: (token: string, fullname: string, email: string, password: string) => Promise<User>
   setRole: (role: Role) => void
@@ -33,6 +34,30 @@ const getInitials = (name?: string) => {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  const toUser = (account: Record<string, unknown>): User => ({
+    name: (account.fullname || account.name || 'User') as string,
+    email: (account.email || '') as string,
+    role: (account.role as Role) || 'student',
+    initials: getInitials((account.fullname || account.name) as string),
+  })
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
+        if (!res.ok) return
+
+        const data = await res.json()
+        if (data?.data) setUser(toUser(data.data))
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    void restoreSession()
+  }, [])
 
   const login = async (email: string, password: string): Promise<User> => {
     const res = await fetch(`${API_URL}/api/auth/login`, {
@@ -49,12 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const loggedInUser = data?.result?.data ?? {}
-    const nextUser: User = {
-      name: loggedInUser?.fullname || loggedInUser?.name || 'User',
-      email: loggedInUser?.email || '',
-      role: (loggedInUser?.role as Role) || 'student',
-      initials: getInitials(loggedInUser?.name),
-    }
+    const nextUser = toUser(loggedInUser)
 
     setUser(nextUser)
     return nextUser
@@ -75,12 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const registeredUser = data?.data?.user ?? {}
-    const nextUser: User = {
-      name: registeredUser?.fullname || 'User',
-      email: registeredUser?.email || email,
-      role: (registeredUser?.role as Role) || 'student',
-      initials: getInitials(registeredUser?.fullname),
-    }
+    const nextUser = toUser({ ...registeredUser, email: registeredUser?.email || email })
 
     setUser(nextUser)
     return nextUser
@@ -104,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  return <AuthContext.Provider value={{ user, login, register, setRole, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, authLoading, login, register, setRole, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
