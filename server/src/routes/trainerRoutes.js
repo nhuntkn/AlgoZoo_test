@@ -39,7 +39,7 @@ router
 
 router
   .route('/trainer/review/:submission_id')
-  .put(isAuthenticatedUser, verifyTrainer, validateObjectId('submission_id'), reviewSubmission); // trainer only
+  .patch(isAuthenticatedUser, verifyTrainer, validateObjectId('submission_id'), reviewSubmission); // trainer only — PATCH: partial update (feedback/status), not a full replace
 
 router.route('/trainer/submissions').get(isAuthenticatedUser, verifyTrainer, getSubmissions);
 router

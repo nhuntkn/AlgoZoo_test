@@ -193,8 +193,10 @@ exports.assignProblemToClass = async (req, res) => {
           class_id: classProblem.class_id,
           problem_id: problem._id,
           title: problem.title,
+          description: problem.description,
           difficulty: problem.difficulty,
           problemType: problem.problemType,
+          problemUrl: problem.problemUrl,
           assigned_by: classProblem.assigned_by,
           deadline: classProblem.deadline,
           created_at: classProblem.created_at,
@@ -366,12 +368,31 @@ exports.reviewSubmission = async (req, res) => {
 // GET /api/trainer/submissions?student=&problem=&status=
 exports.getSubmissions = async (req, res) => {
   try {
-    const { student, problem, status } = req.query;
+    const { student, problem, status, problemType } = req.query;
+
+    if (problemType) {
+      const validTypes = ['OS', 'DB', 'DSA', 'OTHER'];
+      if (!validTypes.includes(problemType)) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Invalid problemType. Allowed values: ${validTypes.join(', ')}`,
+        });
+      }
+    }
 
     const classIds = await getTrainerClassIds(req.user._id);
     const classProblemFilter = { class_id: { $in: classIds } };
     if (problem) {
       classProblemFilter.problem_id = problem;
+    }
+    if (problemType) {
+      const matchingProblemIds = await Problem.find({ problemType }).distinct('_id');
+      // If both `problem` and `problemType` were given, intersect them by only keeping
+      // problem_id if it also matches problemType — Mongo can't AND two problem_id
+      // conditions directly, so fold problemType into the $in list ourselves.
+      classProblemFilter.problem_id = problem
+        ? { $in: matchingProblemIds.filter((id) => id.toString() === problem) }
+        : { $in: matchingProblemIds };
     }
     const classProblemIds = await ClassProblem.find(classProblemFilter).distinct('_id');
 
@@ -384,7 +405,7 @@ exports.getSubmissions = async (req, res) => {
       .populate({
         path: 'class_problem_id',
         populate: [
-          { path: 'problem_id', select: 'title' },
+          { path: 'problem_id', select: 'title problemType' },
           { path: 'class_id', select: 'name' },
         ],
       });
@@ -393,7 +414,11 @@ exports.getSubmissions = async (req, res) => {
       submission_id: s._id,
       student: s.student_id ? { id: s.student_id._id, name: s.student_id.fullname } : null,
       problem: s.class_problem_id && s.class_problem_id.problem_id
-        ? { id: s.class_problem_id.problem_id._id, title: s.class_problem_id.problem_id.title }
+        ? {
+            id: s.class_problem_id.problem_id._id,
+            title: s.class_problem_id.problem_id.title,
+            problemType: s.class_problem_id.problem_id.problemType,
+          }
         : null,
       class: s.class_problem_id && s.class_problem_id.class_id
         ? { id: s.class_problem_id.class_id._id, className: s.class_problem_id.class_id.name }
