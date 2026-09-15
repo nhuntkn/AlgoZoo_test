@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const validateEmail = require('../validators/emailFormat');
 const Class = require('../models/class');
+const ClassMember = require("../models/classMember")
 const mongoose = require('mongoose');
 // TODO: Controller for admin to get all users information
 exports.getUser = async (req,res) => {
@@ -112,6 +113,70 @@ exports.getAllClasses = async (req, res) => {
   }
 };
 
+// Controller for admin to view class detail
+// GET /api/admin/classes/:class_id
+exports.getClassDetail = async (req, res) => {
+    try {
+        const class_id = req.params.class_id?.trim();
+        if (!mongoose.Types.ObjectId.isValid(class_id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid class_id',
+            });
+        }
+
+        const classDoc = await Class.findById(class_id);
+        if (!classDoc) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Class not found',
+            });
+        }
+
+        // Lấy toàn bộ member của class, populate thông tin user
+        const members = await ClassMember.find({ classId: class_id })
+            .populate('userId', 'fullname email role isActive createdAt');
+        const trainers = [];
+        const students = [];
+
+        members.forEach((m) => {
+            if (!m.userId) return; // phòng trường hợp user đã bị xoá nhưng ClassMember còn sót
+            const info = {
+                id: m.userId._id,
+                fullname: m.userId.name,
+                email: m.userId.email,
+                isActive: m.userId.isActive,
+                joinedAt: m.createdAt, // thời điểm join class (từ ClassMember)
+            };
+
+            if (m.userId.role === 'trainer') {
+                trainers.push(info);
+            } else if (m.userId.role === 'student') {
+                students.push(info);
+            }
+        });
+        return res.status(200).json({
+            status: 'success',
+            message: 'Class detail retrieved successfully',
+            data: {
+                class_id: classDoc._id,
+                name: classDoc.name,
+                description: classDoc.description,
+                isActive: classDoc.isActive,
+                trainer_count: trainers.length,
+                student_count: students.length,
+                trainers,
+                students,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'SERVER SIDE ERROR',
+      });
+    };
+};
 // Controller for admin to update user's active status
 // PATCH /api/admin/users/:user_id
 exports.updateUserActive = async (req, res) => {
