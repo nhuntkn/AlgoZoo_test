@@ -68,7 +68,7 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// TODO: Controller for admin to get all users with role 'student' or 'trainer' or admin 
+// TODO: Controller for admin to get all users with role 'student' or 'trainer' or 'admin'
 exports.getUserWithRole = async (req, res) => {
   try {
     const { role } = req.query;
@@ -119,7 +119,10 @@ exports.getAllClasses = async (req, res) => {
 // GET /api/admin/classes/:class_id
 exports.getClassDetail = async (req, res) => {
     try {
+        // Get the class ID from the request parameters
         const class_id = req.params.class_id?.trim();
+
+        // Check whether the provided class ID is a valid MongoDB ObjectId
         if (!mongoose.Types.ObjectId.isValid(class_id)) {
             return res.status(400).json({
                 status: 'error',
@@ -127,7 +130,10 @@ exports.getClassDetail = async (req, res) => {
             });
         }
 
+        // Find the class by its ID
         const classDoc = await Class.findById(class_id);
+
+        // Return 404 if the class does not exist
         if (!classDoc) {
             return res.status(404).json({
                 status: 'error',
@@ -135,31 +141,41 @@ exports.getClassDetail = async (req, res) => {
             });
         }
 
-        // Lấy toàn bộ member của class, populate thông tin user
+        // Get all members belonging to this class
+        // Populate user information from the User collection
         const members = await ClassMember.find({ classId: class_id })
             .populate('userId', 'fullname email role isActive createdAt');
+
+        // Separate class members into trainers and students
         const trainers = [];
         const students = [];
-        const admins = []
 
         members.forEach((m) => {
-            if (!m.userId) return; 
+            // Skip the member if the referenced user no longer exists
+            if (!m.userId) return;
+
+            // Create a simplified user object for the API response
             const info = {
                 id: m.userId._id,
-                fullname: m.userId.name,
+                fullname: m.userId.fullname,
                 email: m.userId.email,
                 isActive: m.userId.isActive,
+
+                // Use ClassMember.createdAt as the time the user joined the class
                 joinedAt: m.createdAt,
             };
 
+            // Add the user to the trainers list based on their role
             if (m.userId.role === 'trainer') {
                 trainers.push(info);
+
+            // Add the user to the students list based on their role
             } else if (m.userId.role === 'student') {
                 students.push(info);
-            } else if (m.userId.role === 'admin') {
-                admins.push(info);
-            };
+            }
         });
+
+        // Return the class details together with its trainers and students
         return res.status(200).json({
             status: 'success',
             message: 'Class detail retrieved successfully',
@@ -168,9 +184,12 @@ exports.getClassDetail = async (req, res) => {
                 name: classDoc.name,
                 description: classDoc.description,
                 isActive: classDoc.isActive,
+
+                // Return the total number of trainers and students
                 trainer_count: trainers.length,
                 student_count: students.length,
-                admins,
+
+                // Return detailed information about class members
                 trainers,
                 students,
             },
@@ -180,9 +199,11 @@ exports.getClassDetail = async (req, res) => {
         return res.status(500).json({
             status: 'error',
             message: 'SERVER SIDE ERROR',
-      });
-    };
+        });
+    }
 };
+
+
 // Controller for admin to update user's active status
 // PATCH /api/admin/users/:user_id
 exports.updateUserActive = async (req, res) => {
@@ -414,18 +435,18 @@ exports.updateClassActive = async (req, res) => {
 /**
  * Controller for admin dashboard overview
  * GET /api/admin/dashboard
- * Optional query param: class_id -> scopes all metrics to a single class GET /api/admin/dashboard?class_id
+ * GET /api/admin/dashboard?class_id -> scopes all metrics to a single class 
  *
  * Formulas:
  * 
  * - Class progress = total submissions in class / (total problems assigned * total students in class)
- * for example  Class has 5 problems assigned, has 9 students → need 5 × 9 = 45 submissions for 100%.
+ * for example Class problemCount:2 , studentCount: 4, submissionCount: 2 → progressPercent = 2 / (2 x 4) × 100 = 25%
  * 
  * - Student progress  = total submissions of that student / total problems assigned to their class
- * for example 5 problems assigned, submitted 4 → 4 / 5 × 100 = 80%
+ * for example Student problemCount:5 , submissionCount 4 → progressPercent = 4 / 5 × 100 = 80%
  * 
  * - Subject overview = submissions of type / (problems of type × students in class) × 100
- * for example 
+ * for example ProblemType DSA: submissionCount: 2, studentCount: 4  → progressPercent= 2 / 4 × 100= 50%
  */
 exports.getDashboard = async (req, res) => {
   try {
@@ -489,7 +510,7 @@ exports.getDashboard = async (req, res) => {
         },
       },
       {
-        // Lấy thông tin user của từng member để lọc role
+        // Get all user 
         $lookup: {
           from: 'users',
           localField: 'members.userId',
@@ -508,7 +529,7 @@ exports.getDashboard = async (req, res) => {
       { $unwind: '$classInfo' },
       {
         $addFields: {
-          // Chỉ đếm user có role = student
+          // Only count user with role = student
           studentCount: {
             $size: {
               $filter: {
