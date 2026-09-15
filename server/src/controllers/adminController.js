@@ -1,5 +1,4 @@
 const User = require('../models/user');
-const validateEmail = require('../validators/emailFormat');
 const Class = require('../models/class');
 const ClassMember = require("../models/classMember")
 const mongoose = require('mongoose');
@@ -51,7 +50,6 @@ exports.getUserById = async (req, res) => {
       message: 'User information retrieved successfully',
       data: {
         id: user._id,
-        username: user.username,
         email: user.email,
         fullname: user.fullname,
         role: user.role || 'student', // Default to 'student' if role is not set
@@ -139,6 +137,7 @@ exports.getClassDetail = async (req, res) => {
             .populate('userId', 'fullname email role isActive createdAt');
         const trainers = [];
         const students = [];
+        const admins = []
 
         members.forEach((m) => {
             if (!m.userId) return; // phòng trường hợp user đã bị xoá nhưng ClassMember còn sót
@@ -154,7 +153,9 @@ exports.getClassDetail = async (req, res) => {
                 trainers.push(info);
             } else if (m.userId.role === 'student') {
                 students.push(info);
-            }
+            } else if (m.userId.role === 'admin') {
+                admins.push(info);
+            };
         });
         return res.status(200).json({
             status: 'success',
@@ -166,6 +167,7 @@ exports.getClassDetail = async (req, res) => {
                 isActive: classDoc.isActive,
                 trainer_count: trainers.length,
                 student_count: students.length,
+                admins,
                 trainers,
                 students,
             },
