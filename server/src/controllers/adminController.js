@@ -1,6 +1,9 @@
 const User = require('../models/user');
 const Class = require('../models/class');
 const ClassMember = require("../models/classMember")
+const Submission = require('../models/submission');
+const ClassProblem = require('../models/classProblem')
+const Problem = require('../models/problem');
 const mongoose = require('mongoose');
 
 // TODO: Controller for admin to get all users information
@@ -140,13 +143,13 @@ exports.getClassDetail = async (req, res) => {
         const admins = []
 
         members.forEach((m) => {
-            if (!m.userId) return; // phòng trường hợp user đã bị xoá nhưng ClassMember còn sót
+            if (!m.userId) return; 
             const info = {
                 id: m.userId._id,
                 fullname: m.userId.name,
                 email: m.userId.email,
                 isActive: m.userId.isActive,
-                joinedAt: m.createdAt, // thời điểm join class (từ ClassMember)
+                joinedAt: m.createdAt,
             };
 
             if (m.userId.role === 'trainer') {
@@ -319,48 +322,398 @@ exports.updateClassDetails = async (req, res) => {
 // Controller for admin to update class active status
 // PATCH /api/admin/classes/:class_id/active
 exports.updateClassActive = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const class_id = req.params.class_id?.trim();
+
+      if (!mongoose.Types.ObjectId.isValid(class_id)) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid class_id',
+        });
+      }
+
+      const { isActive } = req.body || {};
+
+      if (typeof isActive !== 'boolean') {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          status: 'error',
+          message: 'isActive (boolean) is required',
+        });
+      }
+
+      // 1. Update class status
+      const classDoc = await Class.findByIdAndUpdate(
+        class_id,
+        { isActive, archivedAt: isActive ? null : new Date() },
+        { returnDocument: 'after', session }
+      );
+
+      if (!classDoc) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({
+          status: 'error',
+          message: 'Class not found',
+        });
+      }
+
+      // 2. Get all student userIds belonging to this class
+      const members = await ClassMember.find({ classId: class_id })
+        .select('userId')
+        .session(session);
+      const memberUserIds = members.map((m) => m.userId);
+
+      let affectedStudents = 0;
+
+      if (memberUserIds.length) {
+        const result = await User.updateMany(
+          {
+            _id: { $in: memberUserIds },
+            role: 'student',
+            isActive: !isActive,
+          },
+          { $set: { isActive } },
+          { session }
+        );
+        affectedStudents = result.modifiedCount || 0;
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(200).json({
+        status: 'success',
+        message: isActive
+          ? `Class activated successfully. ${affectedStudents} student(s) were reactivated`
+          : `Class deactivated successfully. ${affectedStudents} student(s) were set to inactive`,
+        data: {
+          affectedStudents,
+          class: classDoc,
+    
+        },
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error(error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'SERVER SIDE ERROR',
+      });
+    }
+  };
+
+// 
+/**
+ * Controller for admin dashboard overview
+ * GET /api/admin/dashboard
+ * Optional query param: class_id -> scopes all metrics to a single class GET /api/admin/dashboard?class_id
+ *
+ * Formulas:
+ * 
+ * - Class progress = total submissions in class / (total problems assigned * total students in class)
+ * for example  Class has 5 problems assigned, has 9 students → need 5 × 9 = 45 submissions for 100%.
+ * 
+ * - Student progress  = total submissions of that student / total problems assigned to their class
+ * for example 5 problems assigned, submitted 4 → 4 / 5 × 100 = 80%
+ * 
+ * - Subject overview = submissions of type / (problems of type × students in class) × 100
+ * for example 
+ */
+exports.getDashboard = async (req, res) => {
   try {
-    const class_id = req.params.class_id?.trim();
+    const { class_id } = req.query;
+    let classFilter = {};
 
-    if (!mongoose.Types.ObjectId.isValid(class_id)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid class_id',
-      });
+    if (class_id) {
+      if (!mongoose.Types.ObjectId.isValid(class_id)) {
+        return res.status(400).json({ status: 'error', message: 'Invalid class_id' });
+      }
+      const classExists = await Class.findById(class_id);
+      if (!classExists) {
+        return res.status(404).json({ status: 'error', message: 'Class not found' });
+      }
+      classFilter = { _id: new mongoose.Types.ObjectId(class_id) };
     }
 
-    const { isActive } = req.body || {};
+    // 1. Classes summary (total / active / inactive)
+    const totalClasses = await Class.countDocuments(classFilter);
+    const activeClasses = await Class.countDocuments({ ...classFilter, isActive: true });
 
-    if (typeof isActive !== 'boolean') {
-      return res.status(400).json({
-        status: 'error',
-        message: 'isActive (boolean) is required',
-      });
+    // 2. Students summary (total / active / inactive)
+    let totalStudents, activeStudents;
+    if (class_id) {
+      const memberIds = await ClassMember.find({ classId: class_id }).distinct('userId');
+      totalStudents = await User.countDocuments({ _id: { $in: memberIds }, role: 'student' });
+      activeStudents = await User.countDocuments({ _id: { $in: memberIds }, role: 'student', isActive: true });
+    } else {
+      totalStudents = await User.countDocuments({ role: 'student' });
+      activeStudents = await User.countDocuments({ role: 'student', isActive: true });
     }
 
-    const classDoc = await Class.findByIdAndUpdate(
-      class_id,
-      { isActive, archivedAt: isActive ? null : new Date() },
-      { returnDocument: 'after' }
-    );
+    // 3. Class progress
+    // Class Progress Percent = totalSubmissions / (problemCount * studentCount) * 100
+    const classProgressMatch = class_id
+      ? { $match: { class_id: new mongoose.Types.ObjectId(class_id) } }
+      : { $match: {} };
+    const classProgressRaw = await ClassProblem.aggregate([
+      classProgressMatch,
+      {
+        $group: {
+          _id: '$class_id',
+          problemIds: { $push: '$_id' },
+          problemCount: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'submissions',
+          localField: 'problemIds',
+          foreignField: 'class_problem_id',
+          as: 'submissions',
+        },
+      },
+      {
+        $lookup: {
+          from: 'classmembers',
+          localField: '_id',
+          foreignField: 'classId',
+          as: 'members',
+        },
+      },
+      {
+        // Lấy thông tin user của từng member để lọc role
+        $lookup: {
+          from: 'users',
+          localField: 'members.userId',
+          foreignField: '_id',
+          as: 'memberUsers',
+        },
+      },
+      {
+        $lookup: {
+          from: 'classes',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'classInfo',
+        },
+      },
+      { $unwind: '$classInfo' },
+      {
+        $addFields: {
+          // Chỉ đếm user có role = student
+          studentCount: {
+            $size: {
+              $filter: {
+                input: '$memberUsers',
+                as: 'u',
+                cond: { $eq: ['$$u.role', 'student'] },
+              },
+            },
+          },
+          submissionCount: { $size: '$submissions' },
+        },
+      },
+      {
+        $addFields: {
+          totalRequiredSubmissions: { $multiply: ['$problemCount', '$studentCount'] },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          class_id: '$_id',
+          name: '$classInfo.name',
+          isActive: '$classInfo.isActive',
+          studentCount: 1,
+          problemCount: 1,
+          submissionCount: 1,
+          progressPercent: {
+            $cond: [
+              { $eq: ['$totalRequiredSubmissions', 0] },
+              0,
+              {
+                $min: [
+                  100,
+                  {
+                    $round: [
+                      { $multiply: [{ $divide: ['$submissionCount', '$totalRequiredSubmissions'] }, 100] },
+                      0,
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    // 4. Students progress
+    const memberMatch = class_id
+      ? { $match: { classId: new mongoose.Types.ObjectId(class_id) } }
+      : { $match: {} };
 
-    if (!classDoc) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Class not found',
-      });
-    }
+    const studentsProgress = await ClassMember.aggregate([
+      memberMatch,
+      {
+        $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' },
+      },
+      { $unwind: '$user' },
+      { $match: { 'user.role': 'student' } },
+      {
+        $lookup: { from: 'classes', localField: 'classId', foreignField: '_id', as: 'class' },
+      },
+      { $unwind: '$class' },
+      {
+        $lookup: { from: 'classproblems', localField: 'classId', foreignField: 'class_id', as: 'classProblems' },
+      },
+      {
+        $addFields: {
+          problemIds: '$classProblems._id',
+          totalProblems: { $size: '$classProblems' },
+        },
+      },
+      {
+        $lookup: {
+          from: 'submissions',
+          let: { studentId: '$userId', problemIds: '$problemIds' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$student_id', '$$studentId'] },
+                    { $in: ['$class_problem_id', '$$problemIds'] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'submissions',
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          student_id: '$userId',
+          fullname: '$user.fullname',
+          email: '$user.email',
+          class_id: '$classId',
+          className: '$class.name',
+          submissionCount: { $size: '$submissions' },
+          problemCount: '$totalProblems',
+          progressPercent: {
+            $cond: [
+              { $eq: ['$totalProblems', 0] },
+              0,
+              {
+                $round: [
+                  { $multiply: [{ $divide: [{ $size: '$submissions' }, '$totalProblems'] }, 100] },
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ]);
 
+    // 5. Subject overview: progress per problemType (optionally filtered by class_id)
+    const classProblemMatch = class_id
+      ? { $match: { class_id: new mongoose.Types.ObjectId(class_id) } }
+      : { $match: {} };
+
+    const subjectOverview = await ClassProblem.aggregate([
+      classProblemMatch,
+      {
+        // Join problem to get its type
+        $lookup: { from: 'problems', localField: 'problem_id', foreignField: '_id', as: 'problem' },
+      },
+      { $unwind: '$problem' },
+      {
+        // Join submissions made for this assigned problem
+        $lookup: { from: 'submissions', localField: '_id', foreignField: 'class_problem_id', as: 'submissions' },
+      },
+      {
+        // Join members of the class this problem belongs to
+        $lookup: { from: 'classmembers', localField: 'class_id', foreignField: 'classId', as: 'members' },
+      },
+      {
+        // Join users to filter role = student
+        $lookup: { from: 'users', localField: 'members.userId', foreignField: '_id', as: 'memberUsers' },
+      },
+      {
+        $addFields: {
+          submissionCount: { $size: '$submissions' },
+          studentCount: {
+            $size: {
+              $filter: {
+                input: '$memberUsers',
+                as: 'u',
+                cond: { $eq: ['$$u.role', 'student'] },
+              },
+            },
+          },
+        },
+      },
+      {
+        // Group by problem type
+        $group: {
+          _id: '$problem.problemType',
+          submissionCount: { $sum: '$submissionCount' },
+          requiredSubmissions: { $sum: '$studentCount' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          problemType: '$_id',
+          submissionCount: 1,
+          progressPercent: {
+            $cond: [
+              { $eq: ['$requiredSubmissions', 0] },
+              0,
+              {
+                $min: [
+                  100,
+                  { $round: [{ $multiply: [{ $divide: ['$submissionCount', '$requiredSubmissions'] }, 100] }, 0] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      { $sort: { problemType: 1 } },
+    ]);
     return res.status(200).json({
       status: 'success',
-      message: 'Class active status updated successfully',
-      data: { class: classDoc },
+      message: 'Dashboard data retrieved successfully',
+      data: {
+        filter: { class_id: class_id || null },
+        classes: {
+          total: totalClasses,
+          active: activeClasses,
+          inactive: totalClasses - activeClasses,
+        },
+        students: {
+          total: totalStudents,
+          active: activeStudents,
+          inactive: totalStudents - activeStudents,
+        },
+        classProgress: classProgressRaw,
+        studentsProgress,
+        subjectOverview,
+      },
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'SERVER SIDE ERROR',
-    });
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
