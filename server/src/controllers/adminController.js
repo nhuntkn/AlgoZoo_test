@@ -3,6 +3,7 @@ const validateEmail = require('../validators/emailFormat');
 const Class = require('../models/class');
 const ClassMember = require("../models/classMember")
 const mongoose = require('mongoose');
+
 // TODO: Controller for admin to get all users information
 exports.getUser = async (req,res) => {
   try {
@@ -66,13 +67,13 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// TODO: Controller for admin to get all users with role 'student' or 'trainer'
+// TODO: Controller for admin to get all users with role 'student' or 'trainer' or admin 
 exports.getUserWithRole = async (req, res) => {
   try {
     const { role } = req.query;
 
-    if (!role || (role !== 'student' && role !== 'trainer')) {
-      return res.status(400).json({status: 'error', message: 'Invalid role. Please specify either "student" or "trainer".' });
+    if (!role || (role !== 'student' && role !== 'trainer'  && role !== 'admin')) {
+      return res.status(400).json({status: 'error', message: 'Invalid role. Please specify either "student" or "trainer" or "admin".' });
     }
 
     const users = await User.find({ role }).select('-password');
