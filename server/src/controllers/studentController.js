@@ -1,17 +1,7 @@
 const ClassProblem = require('../models/classProblem');
 const Submission = require('../models/submission');
-
-/**
- * Helper to derive status for UI display
- */
-
-const getDisplayStatus = (submission) => {
-    if (!submission) return null;
-    if (submission.status === 'review') return 'Reviewed';
-    if (submission.is_late || submission.status === 'late') return 'Late';
-    return 'Pending';
-};
-
+const {getDisplayStatus} = require('../utils/submissionStatus');
+require('../models/problem')
 /**
  * Get problem list for a specific class
  * GET /routes/student/classes/:classId/problems
@@ -172,7 +162,7 @@ exports.createStudentSubmission = async (req, res) => {
         }).lean();
 
         if (existingSubmission) {
-            return res.status(400).json({
+            return res.status(409).json({
                 status: 'error',
                 message: 'You have already submitted a solution for this problem. Re-submissions are not allowed.',
             });
@@ -233,7 +223,7 @@ exports.createStudentSubmission = async (req, res) => {
         }
 
         //5. Validate block structure based on Problem Type
-        const problemType = classProblem.problem.problemType;
+        const problemType = classProblem.problem_id.problemType;
 
         if (problemType === 'DSA') {
             const hasCodeOrText = blocks.some(b => b.type === 'code' || b.type === 'text');
@@ -275,9 +265,9 @@ exports.createStudentSubmission = async (req, res) => {
             data: submission,
         });
     } catch (error) {
-        console.error(error);
+        console.error('createStudentSubmission Error:', error);
         return res.status(500).json({
-            status: ('createStudentSubmission Error:', error),
+            status: 'error',
             message: 'SERVER SIDE ERROR'
         });
     }
