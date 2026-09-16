@@ -9,6 +9,11 @@ import { ManageClass } from './pages/admin/ManageClass'
 import { TrainerDashboard } from './pages/trainer/TrainerDashboard'
 import { TrainerClasses } from './pages/trainer/TrainerClasses'
 import { TrainerProblems } from './pages/trainer/TrainerProblems'
+import { ClassOverview } from './pages/trainer/class/ClassOverview'
+import { ClassProblems } from './pages/trainer/class/ClassProblems'
+import { ClassSubmissions } from './pages/trainer/class/ClassSubmissions'
+import { ClassStudents } from './pages/trainer/class/ClassStudents'
+import { ReviewSubmission } from './pages/trainer/ReviewSubmission'
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage'
@@ -45,7 +50,13 @@ function App() {
                 <Route path="/admin/classes/:classId/manage" element={<ManageClass />} />
                 <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
                 <Route path="/trainer/classes" element={<TrainerClasses />} />
+                <Route path="/trainer/classes/:classId" element={<Navigate to="overview" replace />} />
+                <Route path="/trainer/classes/:classId/overview" element={<ClassOverview />} />
+                <Route path="/trainer/classes/:classId/problems" element={<ClassProblems />} />
+                <Route path="/trainer/classes/:classId/submissions" element={<ClassSubmissions />} />
+                <Route path="/trainer/classes/:classId/students" element={<ClassStudents />} />
                 <Route path="/trainer/problems" element={<TrainerProblems />} />
+                <Route path="/trainer/submissions/:id" element={<ReviewSubmission />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
