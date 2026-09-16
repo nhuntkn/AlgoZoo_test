@@ -355,22 +355,26 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
 
             {/* Difficulty */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">Difficulty</label>
-              <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+              <label className={`block text-sm font-semibold mb-2 ${type === 'DSA' ? 'text-gray-800' : 'text-gray-400'}`}>
+                Difficulty
+                {type !== 'DSA' && <span className="ml-1.5 text-xs font-normal text-gray-400">(DSA only)</span>}
+              </label>
+              <div className={`flex rounded-xl border overflow-hidden ${type !== 'DSA' ? 'border-gray-100 opacity-40 pointer-events-none' : 'border-gray-200'}`}>
                 {(['easy', 'medium', 'hard'] as Difficulty[]).map((d, i) => (
                   <button
                     key={d}
                     onClick={() => setDifficulty(d)}
+                    disabled={type !== 'DSA'}
                     className={`flex-1 py-2 text-xs font-semibold capitalize transition-colors ${
                       i > 0 ? 'border-l border-gray-200' : ''
                     } ${
-                      difficulty === d
+                      difficulty === d && type === 'DSA'
                         ? d === 'easy'
                           ? 'bg-green-50 text-green-700 border-green-200'
                           : d === 'medium'
                           ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
                           : 'bg-red-50 text-red-700 border-red-200'
-                        : 'text-gray-500 hover:bg-gray-50'
+                        : 'text-gray-400 bg-gray-50'
                     }`}
                   >
                     {d.charAt(0).toUpperCase() + d.slice(1)}

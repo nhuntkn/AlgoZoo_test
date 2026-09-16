@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText, Code2, ImageIcon, Paperclip, ChevronLeft, ChevronRight, Check, Pencil } from 'lucide-react'
-import { Badge, TypeBadge } from '../../components/ui/Badge'
+import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { useNotifications } from '../../context/NotificationContext'
 
@@ -169,11 +169,9 @@ export function ReviewSubmission() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">{submission.student}</h1>
-            <p className="text-sm text-gray-400">{submission.problem} · Submitted {submission.submittedAt}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <TypeBadge type={submission.problemType} />
           {done ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-green-100 text-green-700">
               <Check size={11} /> Reviewed
@@ -195,9 +193,6 @@ export function ReviewSubmission() {
               <FileText size={13} className="text-gray-400" />
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Problem</span>
               <span className="ml-1 text-xs font-bold text-gray-700">{submission.problem}</span>
-              <div className="ml-auto flex items-center">
-                <TypeBadge type={submission.problemType} />
-              </div>
             </div>
             <div className="px-5 py-4 space-y-3">
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{submission.problemDescription}</p>

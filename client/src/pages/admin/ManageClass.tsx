@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Copy, Check, X, UserMinus, Link2 } from 'lucide-react'
+import { ArrowLeft, Copy, Check, X, UserMinus, Link2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 
@@ -36,6 +36,30 @@ export function ManageClass() {
   const [copiedTrainer, setCopiedTrainer] = useState(false)
   const [showStudentLink, setShowStudentLink] = useState(false)
   const [showTrainerLink, setShowTrainerLink] = useState(false)
+
+  type RemoveTarget = { type: 'student' | 'trainer'; id: number; name: string; username: string }
+  const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null)
+  const [removeSuccess, setRemoveSuccess] = useState<Omit<RemoveTarget, 'id'> | null>(null)
+
+  const openRemoveConfirm = (type: 'student' | 'trainer', id: number, name: string, username: string) => {
+    setRemoveTarget({ type, id, name, username })
+  }
+
+  const confirmRemove = () => {
+    if (!removeTarget) return
+    if (removeTarget.type === 'student') {
+      setStudents((prev) => prev.filter((s) => s.id !== removeTarget.id))
+    } else {
+      setTrainers((prev) => prev.filter((t) => t.id !== removeTarget.id))
+    }
+    setRemoveSuccess({ type: removeTarget.type, name: removeTarget.name, username: removeTarget.username })
+    setRemoveTarget(null)
+  }
+
+  const closeRemoveModals = () => {
+    setRemoveTarget(null)
+    setRemoveSuccess(null)
+  }
 
   const studentJoinLink = `https://algozoo.com/join/student/${cls.studentJoinToken}`
   const trainerInviteLink = `https://algozoo.com/join/trainer/${cls.trainerInviteToken}`
@@ -181,7 +205,7 @@ export function ManageClass() {
                 <span className="text-sm font-semibold text-gray-900">{s.name}</span>
                 <span className="text-sm text-gray-500">@{s.username}</span>
                 <button
-                  onClick={() => setStudents((prev) => prev.filter((x) => x.id !== s.id))}
+                  onClick={() => openRemoveConfirm('student', s.id, s.name, s.username)}
                   className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
                 >
                   <UserMinus size={14} /> Remove
@@ -191,6 +215,75 @@ export function ManageClass() {
             {students.length === 0 && (
               <div className="py-10 text-center text-sm text-gray-400">No students yet</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Remove confirmation modal (student & trainer) ── */}
+      {removeTarget && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-[480px] p-6 relative">
+            <button onClick={closeRemoveModals} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700">
+              <X size={18} />
+            </button>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <UserMinus size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-base">
+                  {removeTarget.type === 'student' ? 'Remove Student from Class' : 'Remove Trainer from Class'}
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {removeTarget.type === 'student'
+                    ? 'Are you sure you want to remove this student from the class?'
+                    : 'Are you sure you want to remove this trainer from the class?'}
+                </p>
+              </div>
+            </div>
+            <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-600 mb-5">
+              You are about to remove <strong>{removeTarget.name}</strong>
+              {removeTarget.type === 'student' && <> (@{removeTarget.username})</>} from{' '}
+              <strong>{cls.name}</strong>. They will lose access to class materials, assignments, and discussions.
+              This action can be undone by re-inviting the{' '}
+              {removeTarget.type === 'student' ? 'student' : 'trainer'}.
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={closeRemoveModals}>Cancel</Button>
+              <Button onClick={confirmRemove}>Yes, Remove</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Remove success modal (student & trainer) ── */}
+      {removeSuccess && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-[480px] p-6 relative">
+            <button onClick={closeRemoveModals} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700">
+              <X size={18} />
+            </button>
+            <div className="flex flex-col items-center text-center mb-5 pt-2">
+              <div className="w-12 h-12 rounded-full border-2 border-green-500 flex items-center justify-center mb-3">
+                <CheckCircle2 size={28} className="text-green-500" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-base mb-1">
+                {removeSuccess.type === 'student' ? 'Student Removed Successfully' : 'Trainer Removed Successfully'}
+              </h3>
+              <p className="text-sm text-gray-600">
+                <strong>{removeSuccess.name}</strong>{' '}
+                {removeSuccess.type === 'student' && <span className="text-gray-500">(@{removeSuccess.username})</span>}{' '}
+                has been removed from <strong>{cls.name}</strong>.
+              </p>
+            </div>
+            <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 flex items-start gap-2.5 mb-5 text-sm text-orange-700">
+              <AlertCircle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+              <span>
+                The {removeSuccess.type} will no longer have access to class materials, assignments, and discussions.
+                You can invite them back at any time using the join link.
+              </span>
+            </div>
+            <Button className="w-full justify-center" onClick={closeRemoveModals}>Done</Button>
           </div>
         </div>
       )}
@@ -236,7 +329,7 @@ export function ManageClass() {
                 <span className="text-sm font-semibold text-gray-900">{t.name}</span>
                 <span className="text-sm text-gray-500">@{t.username}</span>
                 <button
-                  onClick={() => setTrainers((prev) => prev.filter((x) => x.id !== t.id))}
+                  onClick={() => openRemoveConfirm('trainer', t.id, t.name, t.username)}
                   className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
                 >
                   <UserMinus size={14} /> Remove

@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, Code2, FileText, CheckCircle2, Clock,
   Pencil, Trash2, Check, MessageSquare, ExternalLink,
 } from 'lucide-react'
-import { TypeBadge, Badge } from '../../components/ui/Badge'
+import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 
 type SubmissionData = {
@@ -157,7 +157,6 @@ export function SubmissionStatus() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <TypeBadge type={sub.problemType} />
           <Badge variant={sub.status === 'PENDING' ? 'pending' : 'reviewed'}>
             {sub.status === 'PENDING' ? 'Pending Review' : 'Reviewed'}
           </Badge>
@@ -176,9 +175,6 @@ export function SubmissionStatus() {
               <FileText size={13} className="text-gray-400" />
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Problem</span>
               <span className="ml-1 text-xs font-bold text-gray-700">{sub.problem}</span>
-              <div className="ml-auto">
-                <TypeBadge type={sub.problemType} />
-              </div>
             </div>
             <div className="px-5 py-4 space-y-3">
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{sub.problemDescription}</p>

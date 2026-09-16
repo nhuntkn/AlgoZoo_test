@@ -41,15 +41,6 @@ export function TopHeader() {
           )}
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {user.initials}
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-gray-900 leading-tight">{user.name}</p>
-            <p className="text-xs text-gray-400 capitalize">{user.role}</p>
-          </div>
-        </div>
       </div>
     </header>
   )

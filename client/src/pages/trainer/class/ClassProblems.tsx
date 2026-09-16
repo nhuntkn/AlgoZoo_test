@@ -253,7 +253,7 @@ export function ClassProblems() {
                           </Link>
                           <button
                             onClick={(e) => { e.stopPropagation(); setRemoveTarget(p) }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-7 h-7 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500"
+                            className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -322,7 +322,7 @@ export function ClassProblems() {
                 </div>
                 <p className="font-bold text-gray-900 text-lg">Problems assigned!</p>
                 <p className="text-sm text-gray-400">{selected.length} problem{selected.length !== 1 ? 's' : ''} added to {className}</p>
-                <Button onClick={closeModal}>Done</Button>
+                <Button onClick={closeModal} className="mt-2 w-full justify-center">Done</Button>
               </div>
             ) : (
               <div className="flex divide-x divide-gray-100" style={{ height: '480px' }}>

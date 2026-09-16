@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ChevronLeft, ChevronRight, ExternalLink,
   Plus, Trash2, Code2, FileText, ImageIcon, Paperclip, Send, CheckCircle2,
-  Clock, MessageSquare,
+  Clock, MessageSquare, X, AlertTriangle,
 } from 'lucide-react'
 import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -13,6 +13,7 @@ const problemData: Record<string, {
   title: string; type: string; difficulty: 'Easy' | 'Medium' | 'Hard';
   deadline: string; description: string; constraints: string[]; examples: { input: string; output: string }[];
   resource_url: string; status: 'not-started' | 'pending' | 'reviewed'; isPastDeadline: boolean;
+  submittedAt?: string;
   feedback?: { trainer: string; trainerInitials: string; reviewedAt: string; text: string }
 }> = {
   '1': {
@@ -22,6 +23,7 @@ const problemData: Record<string, {
     examples: [{ input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' }, { input: 'nums = [3,2,4], target = 6', output: '[1,2]' }],
     resource_url: 'https://leetcode.com/problems/two-sum/',
     status: 'reviewed', isPastDeadline: false,
+    submittedAt: 'Sep 10, 2026 at 4:32 PM',
     feedback: { trainer: 'Alex Nguyen', trainerInitials: 'AN', reviewedAt: 'Sep 15, 2026', text: 'Great use of hash map for O(n) solution! The code is clean and readable. Consider adding a comment about the time/space complexity trade-off.' },
   },
   '2': {
@@ -74,7 +76,20 @@ type Block =
   | { id: number; type: 'image'; filename: string; dataUrl: string }
   | { id: number; type: 'file'; filename: string }
 
-let nextId = 1
+let nextId = 200
+
+const reviewedBlocks: Record<string, Block[]> = {
+  '1': [
+    {
+      id: 100, type: 'text',
+      content: 'My approach is to use a hash map to store previously seen numbers. For each number, I check if the complement (target - current) already exists in the map. This gives O(n) time complexity.',
+    },
+    {
+      id: 101, type: 'code', language: 'Python',
+      content: `def two_sum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], i]\n        seen[num] = i\n    return []`,
+    },
+  ],
+}
 
 export function ProblemWorkspace() {
   const { classId = '2', problemId = '1' } = useParams()
@@ -83,9 +98,13 @@ export function ProblemWorkspace() {
   const className = 'WeCamp Batch 22'
   const { addNotification } = useNotifications()
 
-  const [blocks, setBlocks] = useState<Block[]>([])
+  const [blocks, setBlocks] = useState<Block[]>(
+    problem.status === 'reviewed' ? (reviewedBlocks[problemId] ?? []) : []
+  )
   const [submitted, setSubmitted] = useState(problem.status !== 'not-started')
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const imageRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const addMenuRef = useRef<HTMLDivElement>(null)
@@ -125,8 +144,10 @@ export function ProblemWorkspace() {
     e.target.value = ''
   }
 
-  const handleSubmit = () => {
+  const confirmSubmit = () => {
+    setShowConfirm(false)
     setSubmitted(true)
+    setShowSuccess(true)
     const notifContext = `${className} · ${problem.type}`
     const submissionId = problemId
     if (problem.isPastDeadline) {
@@ -153,6 +174,10 @@ export function ProblemWorkspace() {
       context: notifContext, entityType: 'submission', entityId: submissionId,
       linkTo: `/student/submissions/${submissionId}`,
     })
+  }
+
+  const handleDone = () => {
+    setShowSuccess(false)
     navigate('/student/submissions')
   }
 
@@ -188,23 +213,8 @@ export function ProblemWorkspace() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{problem.title}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{className} · Deadline: {problem.deadline}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <TypeBadge type={problem.type} />
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
-            {problem.difficulty}
-          </span>
-          {problem.isPastDeadline && <Badge variant="late">Deadline passed</Badge>}
-          {submitted && (
-            isReviewed
-              ? <Badge variant="reviewed">Reviewed</Badge>
-              : <Badge variant="pending">Pending Review</Badge>
-          )}
-        </div>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">{problem.title}</h1>
       </div>
 
       {/* Two-column layout */}
@@ -219,12 +229,6 @@ export function ProblemWorkspace() {
               <FileText size={13} className="text-gray-400" />
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Problem</span>
               <span className="ml-1 text-xs font-bold text-gray-700">{problem.title}</span>
-              <div className="ml-auto flex items-center gap-2">
-                <TypeBadge type={problem.type} />
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
-                  {problem.difficulty}
-                </span>
-              </div>
             </div>
             <div className="px-5 py-4 space-y-3">
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{problem.description}</p>
@@ -344,68 +348,72 @@ export function ProblemWorkspace() {
             </div>
           )}
 
-          {/* Submit bar */}
-          {!submitted && (
-            <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm px-5 py-4">
-              <p className="text-sm text-gray-400">
-                {!hasContent
-                  ? 'Add at least one content block before submitting.'
-                  : 'Ready to submit. You can only submit once.'}
-              </p>
-              <Button onClick={handleSubmit} disabled={!hasContent}>
-                <Send size={14} /> Submit
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* RIGHT sidebar */}
         <div className="w-[300px] flex-shrink-0 space-y-4 sticky top-4">
 
-          {/* Problem info */}
+          {/* Problem info / Submission info */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <h3 className="font-semibold text-gray-800 text-sm">Problem Info</h3>
-            <InfoRow
-              label="Topic"
-              value={<TypeBadge type={problem.type} />}
-            />
-            <InfoRow
-              label="Difficulty"
-              value={
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
-                  {problem.difficulty}
-                </span>
-              }
-            />
-            {problem.deadline && (
-              <InfoRow
-                label="Deadline"
-                value={
-                  <span className={`text-sm font-medium ${problem.isPastDeadline ? 'text-red-500' : 'text-gray-900'}`}>
-                    {problem.deadline}
-                  </span>
-                }
-              />
-            )}
-            <InfoRow
-              label="Status"
-              value={
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {isReviewed
-                    ? <CheckCircle2 size={13} className="text-green-500" />
-                    : submitted
-                      ? <Clock size={13} className="text-yellow-500" />
-                      : <div className="w-3 h-3 rounded-full bg-gray-200" />
+            {isReviewed ? (
+              <>
+                <h3 className="font-semibold text-gray-800 text-sm">Submission Info</h3>
+                <InfoRow label="Problem" value={problem.title} />
+                <InfoRow label="Class" value={className} />
+                {problem.submittedAt && (
+                  <InfoRow label="Submitted" value={problem.submittedAt} />
+                )}
+                <InfoRow
+                  label="Status"
+                  value={
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <CheckCircle2 size={13} className="text-green-500" />
+                      <span className="text-sm font-medium text-green-700">Reviewed</span>
+                    </div>
                   }
-                  <span className={`text-sm font-medium ${
-                    isReviewed ? 'text-green-700' :
-                    submitted ? 'text-yellow-700' : 'text-gray-400'
-                  }`}>
-                    {isReviewed ? 'Reviewed' : submitted ? 'Pending review' : 'Not started'}
-                  </span>
-                </div>
-              }
-            />
+                />
+              </>
+            ) : (
+              <>
+                <h3 className="font-semibold text-gray-800 text-sm">Problem Info</h3>
+                <InfoRow
+                  label="Topic"
+                  value={<TypeBadge type={problem.type} />}
+                />
+                <InfoRow
+                  label="Difficulty"
+                  value={
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${difficultyClass[problem.difficulty]}`}>
+                      {problem.difficulty}
+                    </span>
+                  }
+                />
+                {problem.deadline && (
+                  <InfoRow
+                    label="Deadline"
+                    value={
+                      <span className={`text-sm font-medium ${problem.isPastDeadline ? 'text-red-500' : 'text-gray-900'}`}>
+                        {problem.deadline}
+                      </span>
+                    }
+                  />
+                )}
+                <InfoRow
+                  label="Status"
+                  value={
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {submitted
+                        ? <Clock size={13} className="text-yellow-500" />
+                        : <div className="w-3 h-3 rounded-full bg-gray-200" />
+                      }
+                      <span className={`text-sm font-medium ${submitted ? 'text-yellow-700' : 'text-gray-400'}`}>
+                        {submitted ? 'Pending review' : 'Not started'}
+                      </span>
+                    </div>
+                  }
+                />
+              </>
+            )}
           </div>
 
           {/* Feedback card */}
@@ -449,18 +457,71 @@ export function ProblemWorkspace() {
             )}
           </div>
 
-          {/* Submit shortcut when not yet submitted */}
+          {/* Submit button */}
           {!submitted && (
             <Button
               className="w-full justify-center"
-              onClick={handleSubmit}
+              onClick={() => setShowConfirm(true)}
               disabled={!hasContent}
             >
-              <Send size={14} /> Submit Solution
+              <Send size={14} /> Submit
             </Button>
           )}
         </div>
       </div>
+
+      {/* ── Confirm submit modal ── */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-[420px] p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Send size={18} className="text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 text-base">Submit your solution?</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Are you sure you want to submit your solution for{' '}
+                  <strong>"{problem.title}"</strong>? You can only submit once.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-5 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                No
+              </button>
+              <Button onClick={confirmSubmit}>
+                <Send size={13} /> Yes, submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success modal ── */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-[420px]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Submit Solution</h3>
+              <button onClick={handleDone} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-8 flex flex-col items-center gap-3 text-center">
+              <div className="w-14 h-14 rounded-full border-2 border-green-500 flex items-center justify-center">
+                <CheckCircle2 size={30} className="text-green-500" />
+              </div>
+              <p className="font-bold text-gray-900 text-lg">Solution submitted!</p>
+              <p className="text-sm text-gray-400">{problem.title}</p>
+              <Button onClick={handleDone} className="mt-1 w-full justify-center">Done</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -5,7 +5,6 @@ import {
   CalendarDays, ChevronDown, X, RotateCcw, Search,
   ChevronLeft, ChevronRight, GraduationCap, MoreHorizontal,
 } from 'lucide-react'
-import { ProgressBar } from '../../components/ui/ProgressBar'
 import { useAuth } from '../../context/AuthContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,7 +63,6 @@ type Student = {
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const ALL_SUBJECTS: Subject[] = ['DSA', 'OS', 'Database']
 
 const PLATFORM_CLASSES: PlatformClass[] = [
   { id: 1, name: 'WeCamp Batch 15', trainers: ['Nguyen Van Hung'], trainerInitials: 'NH', students: 24, problems: 35, status: 'active', progress: 62, endDate: 'Mar 30, 2025' },
@@ -686,8 +684,8 @@ function StudentsSection({ batchFilter }: { batchFilter: string }) {
 
 // ─── Admin Dashboard ──────────────────────────────────────────────────────────
 
-type Filters = { batch: string; subject: Subject | 'all' }
-const DEFAULT_FILTERS: Filters = { batch: 'all', subject: 'all' }
+type Filters = { batch: string }
+const DEFAULT_FILTERS: Filters = { batch: 'all' }
 
 export function AdminDashboard() {
   const { user } = useAuth()
@@ -698,7 +696,6 @@ export function AdminDashboard() {
   const filteredSubs = useMemo(() => {
     return ADMIN_SUBS.filter((s) => {
       if (filters.batch !== 'all' && s.class !== filters.batch) return false
-      if (filters.subject !== 'all' && s.subject !== filters.subject) return false
       return true
     })
   }, [filters])
@@ -715,24 +712,7 @@ export function AdminDashboard() {
   const activeStudents = activeClasses.reduce((s, c) => s + c.students, 0)
   const inactiveStudents = inactiveClasses.reduce((s, c) => s + c.students, 0)
 
-  const subjectStats = useMemo(() => {
-    return ALL_SUBJECTS.map((sub) => {
-      const subsForSub = ADMIN_SUBS.filter((s) => {
-        if (filters.batch !== 'all' && s.class !== filters.batch) return false
-        return s.subject === sub
-      })
-      const total = subsForSub.length
-      const reviewed = subsForSub.filter((s) => s.status === 'reviewed').length
-      const pct = total > 0 ? Math.round((reviewed / total) * 100) : 0
-      return { sub, total, pct }
-    })
-  }, [filters.batch])
-
-  function toggleSubject(sub: Subject) {
-    setFilters((prev) => ({ ...prev, subject: prev.subject === sub ? 'all' : sub }))
-  }
-
-  const hasActiveFilters = filters.batch !== 'all' || filters.subject !== 'all'
+  const hasActiveFilters = filters.batch !== 'all'
 
   const batches = PLATFORM_CLASSES.map((c) => c.name)
 
@@ -886,40 +866,24 @@ export function AdminDashboard() {
 
           {/* Subject Overview */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <h2 className="font-bold text-gray-900 mb-1">Subject Overview</h2>
-            <p className="text-xs text-gray-400 mb-4">Review rate · click to filter</p>
+            <h2 className="text-base font-bold text-gray-900 mb-4">Subject Overview</h2>
             <div className="space-y-4">
-              {subjectStats.map(({ sub, pct, total }) => {
-                const isActive = filters.subject === sub
-                const isDimmed = filters.subject !== 'all' && !isActive
-                return (
-                  <button
-                    key={sub}
-                    onClick={() => toggleSubject(sub)}
-                    className={`w-full text-left transition-opacity duration-150 ${isDimmed ? 'opacity-25' : 'opacity-100'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-semibold text-gray-800">{sub}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">{total} subs</span>
-                        <span className={`text-sm font-bold ${isDimmed ? 'text-gray-300' : subjectStyle[sub].text}`}>
-                          {isDimmed ? '—' : `${pct}%`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                      {!isDimmed && (
-                        <div
-                          className={`h-full rounded-full ${subjectStyle[sub].bar} transition-all duration-300`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
+              {[
+                { label: 'DSA', color: 'bg-orange-400', submissions: 142, rate: 78 },
+                { label: 'OS', color: 'bg-purple-400', submissions: 98, rate: 65 },
+                { label: 'Database', color: 'bg-green-400', submissions: 76, rate: 52 },
+              ].map((s) => (
+                <div key={s.label}>
+                  <div className="flex items-center justify-between text-sm mb-1.5">
+                    <span className="font-semibold text-gray-700">{s.label}</span>
+                    <span className="text-gray-400 text-xs">{s.submissions} submissions · {s.rate}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${s.color}`} style={{ width: `${s.rate}%` }} />
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-gray-400 mt-4">Click a subject to filter the whole dashboard.</p>
           </div>
 
         </div>
