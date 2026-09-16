@@ -4,6 +4,14 @@ const studentController = require('../controllers/studentController');
 const { isAuthenticatedUser, verifyStudent } = require('../middlewares/authMiddleware');
 const { verify } = require('jsonwebtoken');
 
+//Get student progress dashboard stats for a specific class
+router.get(
+    '/classes/:classId/dashboard',
+    isAuthenticatedUser,
+    verifyStudent,
+    studentController.getStudentDashboardStats
+);
+
 //Get all assigned problems for a specific class
 router.get(
     '/classes/:classId/problems',
