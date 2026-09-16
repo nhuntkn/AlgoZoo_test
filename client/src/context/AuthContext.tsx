@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data = await authService.getCurrentUser()
         }
 
-        if (data?.data) setUser(toUser(data.data))
+        const currentUser = data?.data?.user as Record<string, unknown> | undefined
+        if (currentUser) setUser(toUser(currentUser))
       } finally {
         setAuthLoading(false)
       }
