@@ -42,8 +42,8 @@ function getNavItems(role: string): NavItem[] {
 
 export function Sidebar() {
   const { user, logout } = useAuth()
-  if (!user) return null
   const navigate = useNavigate()
+  if (!user) return null
   const navItems = getNavItems(user.role)
 
   return (
