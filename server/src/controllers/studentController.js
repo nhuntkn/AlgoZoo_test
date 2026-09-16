@@ -1,7 +1,177 @@
 const ClassProblem = require('../models/classProblem');
 const Submission = require('../models/submission');
+const ClassMember = require('../models/classMember');
 const {getDisplayStatus} = require('../utils/submissionStatus');
 require('../models/problem')
+
+/**
+ * Get student progress dashboard stats for a specific class
+ * GET /api/student/classes/:classId/dashboard 
+ */
+exports.getStudentDashboardStats = async (req, res) => {
+    try {
+        const {classId} = req.params;
+        const studentId = req.user._id || req.user.id;
+
+        //1. Fetch all assigned problems for this class and populate details & class info
+        const classProblems = await ClassProblem.find({class_id: classId})
+            .populate('problem_id', 'title problemType difficulty problemUrl')
+            .populate('class_id', 'name')
+            .lean();
+
+        const totalProblems = classProblems.length;
+
+        if (!totalProblems) {
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    stats: {
+                        totalProblems: 0,
+                        submittedCount: 0,
+                        reviewedCount: 0,
+                        pendingReviewCount: 0,
+                    },
+                    upcomingDeadlines: [],
+                    recentSubmissions: [],
+                },
+            });
+        }
+
+        const classProblemIds = classProblems.map((cp) => cp._id);
+
+        //Map class problems by _id for quick lookup
+        const classProblemMap = new Map();
+        classProblems.forEach((cp) => {
+            classProblemMap.set(cp._id.toString(), cp);
+        });
+
+        //2. Fetch all submissions by this student for these class problems
+        const submissions = await Submission.find({
+            student_id: studentId,
+            class_problem_id: {$in: classProblemIds},
+        })
+            .sort({createdAt: -1})
+            .lean();
+
+        //Map submissions by class_problem_id for quick lookup
+        const submissionMap = new Map();
+        submissions.forEach((sub) => {
+            submissionMap.set(sub.class_problem_id.toString(), sub);
+        });
+
+        //3. Calculate stat cards
+        let reviewedCount = 0;
+        let pendingReviewCount = 0;
+        
+        submissions.forEach((sub) => {
+            if (sub.status === 'review') {
+                reviewedCount++;
+            } else {
+                pendingReviewCount++;
+            }
+        });
+
+        const submittedCount = submissions.length;
+
+        //4. Build upcoming deadlines (Unsubmitted or Pending problems with future/recent deadlines)
+        const now = new Date();
+        const upcomingDeadlines = classProblems
+            .filter((cp) => {
+                const sub = submissionMap.get(cp._id.toString());
+                //Show unsubmitted problems or problems with upcoming deadlines
+                return !sub && cp.deadline;
+            })
+            .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+            .slice(0, 5)
+            .map((cp) => {
+                const deadlineDate = new Date(cp.deadline);
+                const diffTime = deadlineDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                return {
+                    classProblemId: cp._id,
+                    title: cp.problem_id?.title || 'Untitled Problem',
+                    className: cp.class_id?.name || 'Class',
+                    deadline: cp.deadline,
+                    daysLeft: diffDays > 0 ? `${diffDays}d` : 'Overdue',
+                };
+            });
+        
+        //5. Build Recent Submissions list
+        const recentSubmissions = submissions.slice(0, 5).map((sub) => {
+            const parentCP = classProblemMap.get(sub.class_problem_id.toString());
+
+            return {
+                submissionId: sub._id,
+                classProblemId: sub.class_problem_id,
+                title: parentCP?.problem_id?.title || 'Untitled Problem',
+                className: parentCP?.class_id?.name || 'Class',
+                status: getDisplayStatus(sub),
+                feedback: sub.feedback || '',
+                submittedAt: sub.createdAt, 
+            };
+        });
+
+        return res.status(200).json({
+            status: 'success',
+            data: {
+                stats: {
+                    totalProblems, 
+                    submittedCount, 
+                    reviewedCount,
+                    pendingReviewCount,
+                },
+                upcomingDeadlines,
+                recentSubmissions,
+            },
+        });
+    } catch (error) {
+        console.error('getStudentDashboardStats Error:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'SERVER SIDE ERROR',
+        });
+    }
+};
+
+/**
+ * Get all classes the logged-in student is enrolled in
+ * GET /api/student/classes
+ */
+exports.getStudentClasses = async (req, res) => {
+    try {
+        const studentId = req.user._id || req.user.id;
+
+        // Find class membership records for this student
+        const memberships = await ClassMember.find({userId: studentId})
+            .populate('classId', 'name description isActive')
+            .lean();
+
+        const classes = memberships
+            .filter((m) => m.classId)
+            .map((m) => ({
+            classId: m.classId._id,
+            name: m.classId.name,
+            description: m.classId.description,
+            isActive: m.classId.isActive,
+            joinedAt: m.createdAt,
+        }));
+
+        return res.status(200).json({
+            status: 'success',
+            data: classes,
+        });
+    } catch (error) {
+        console.error('getStudentClasses Error:', error);
+        return res.status(500).json({ 
+            status: 'error', 
+            message: 'SERVER SIDE ERROR' 
+        });
+    }
+};
+
+
+
 /**
  * Get problem list for a specific class
  * GET /routes/student/classes/:classId/problems
@@ -96,6 +266,7 @@ exports.getStudentProblemDetail = async (req, res) => {
             class_problem_id: classProblem._id,
         })
             .populate('content_blocks.file_id')
+            .populate('reviewed_by', 'fullname')
             .lean();
 
         return res.status(200).json({
