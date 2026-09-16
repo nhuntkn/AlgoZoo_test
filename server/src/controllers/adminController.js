@@ -1,11 +1,8 @@
 const User = require('../models/user');
 const Class = require('../models/class');
 const ClassMember = require("../models/classMember")
-const Submission = require('../models/submission');
 const ClassProblem = require('../models/classProblem')
-const Problem = require('../models/problem');
 const mongoose = require('mongoose');
-const isValid = 
 // TODO: Controller for admin to get all users information
 exports.getUser = async (req,res) => {
   try {
