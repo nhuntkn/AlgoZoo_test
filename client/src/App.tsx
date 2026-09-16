@@ -6,6 +6,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { AdminClasses } from './pages/admin/AdminClasses'
 import { ManageClass } from './pages/admin/ManageClass'
+import { TrainerDashboard } from './pages/trainer/TrainerDashboard'
+import { TrainerClasses } from './pages/trainer/TrainerClasses'
+import { TrainerProblems } from './pages/trainer/TrainerProblems'
 
 // Auth
 import { LoginPage } from './pages/auth/LoginPage'
@@ -21,6 +24,7 @@ function RequireAuth() {
 function DashboardRedirect() {
   const { user } = useAuth()
   if (user?.role === 'admin') return <Navigate to="/admin/dashboard" replace />
+  if (user?.role === 'trainer') return <Navigate to="/trainer/dashboard" replace />
   return <DashboardPage />
 }
 
@@ -39,6 +43,9 @@ function App() {
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/classes" element={<AdminClasses />} />
                 <Route path="/admin/classes/:classId/manage" element={<ManageClass />} />
+                <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
+                <Route path="/trainer/classes" element={<TrainerClasses />} />
+                <Route path="/trainer/problems" element={<TrainerProblems />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
