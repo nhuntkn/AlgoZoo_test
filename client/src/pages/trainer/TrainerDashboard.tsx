@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { BookOpen, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react'
 import { StatCard } from '../../components/ui/StatCard'
 import { ProgressBar } from '../../components/ui/ProgressBar'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 
 const recentSubmissions = [
   { id: 1, student: 'Alice Nguyen', initials: 'AN', problem: 'Two Sum', class: 'Batch 21', submittedAt: 'Sep 10', status: 'PENDING' as const },

@@ -3,6 +3,7 @@ import { Search, Plus, Pencil, Trash2, UserPlus, CalendarDays, Users, X, CheckCi
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ProgressBar } from '../../components/ui/ProgressBar'
+import * as adminService from '../../services/adminService'
 
 type ClassItem = {
   id: number | string
@@ -20,8 +21,6 @@ type ClassItem = {
 const allTrainers = ['Nguyen Van Hung', 'Tran Thi Mai', 'Le Van An', 'Pham Thi Huong']
 
 const emptyForm = { name: '', description: '', startDate: '', endDate: '', trainer: allTrainers[0] }
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
 export function AdminClasses() {
   const [classes, setClasses] = useState<ClassItem[]>([])
   const [search, setSearch] = useState('')
@@ -75,26 +74,11 @@ export function AdminClasses() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/admin/classes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name,
-          description: form.description.trim(),
-        }),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data?.message || 'Unable to create class')
-      }
-
-      const createdClass = data?.data
+      const createdClass = await adminService.createClass(name, form.description.trim())
       const newClass: ClassItem = {
-        id: createdClass?.class_id || Date.now(),
-        name: createdClass?.name || name,
-        description: createdClass?.description || form.description.trim(),
+        id: createdClass.id,
+        name: createdClass.name || name,
+        description: createdClass.description || form.description.trim(),
         startDate: form.startDate || 'TBD',
         endDate: form.endDate || 'TBD',
         trainers: [form.trainer],

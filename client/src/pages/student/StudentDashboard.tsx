@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { BookOpen, ClipboardList, Send, Clock, ArrowRight } from 'lucide-react'
 import { StatCard } from '../../components/ui/StatCard'
 import { Badge } from '../../components/ui/Badge'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 
 const deadlines = [
   { id: 2, classId: '2', problem: 'Binary Search', class: 'Batch 22', deadline: 'Sep 22, 2026', daysLeft: 10 },

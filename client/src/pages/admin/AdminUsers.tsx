@@ -1,68 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ChevronLeft, UserCheck, UserX } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
-
-type UserItem = {
-  id: string
-  name: string
-  email: string
-  role: 'admin' | 'trainer' | 'student'
-  isActive: boolean
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import { useAdminUsers } from '../../hooks/useAdminUsers'
+import type { AdminUser } from '../../types/admin'
 
 export function AdminUsers() {
   const navigate = useNavigate()
-  const [users, setUsers] = useState<UserItem[]>([])
+  const { users, isLoading, error, setError, updateUserActive } = useAdminUsers()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
-  const [error, setError] = useState('')
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/admin/get-user`, { credentials: 'include' })
-        const data = await response.json()
-        if (!response.ok) throw new Error(data?.message || 'Unable to load users')
-
-        setUsers((data?.data?.users || []).map((user: { _id: string; fullname?: string; email: string; role: UserItem['role']; isActive: boolean }) => ({
-          id: user._id,
-          name: user.fullname || 'Unnamed user',
-          email: user.email,
-          role: user.role,
-          isActive: user.isActive,
-        })))
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load users')
-      }
-    }
-
-    loadUsers()
-  }, [])
-
-  const toggleStudentStatus = async (user: UserItem) => {
+  const toggleStudentStatus = async (user: AdminUser) => {
     if (user.role !== 'student' || updatingUserId) return
 
     setError('')
     setUpdatingUserId(user.id)
     try {
-      const response = await fetch(`${API_URL}/api/admin/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ isActive: !user.isActive }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data?.message || 'Unable to update student status')
-
-      const updatedUser = data?.data?.user
-      setUsers((currentUsers) => currentUsers.map((currentUser) => currentUser.id === user.id
-        ? { ...currentUser, isActive: updatedUser?.isActive ?? !user.isActive }
-        : currentUser
-      ))
+      await updateUserActive(user)
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Unable to update student status')
     } finally {
@@ -120,6 +76,7 @@ export function AdminUsers() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 m-4">{error}</p>}
+        {isLoading && <p className="p-6 text-sm text-gray-500">Loading users...</p>}
         <div className="grid grid-cols-[1fr_220px_110px_120px] border-b border-gray-100 px-6 py-3">
           {['NAME', 'EMAIL', 'ROLE', 'STATUS'].map((h) => (
             <span key={h} className="text-[10px] font-bold text-gray-400 tracking-widest">{h}</span>

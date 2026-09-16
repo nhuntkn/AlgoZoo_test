@@ -3,8 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Copy, Check, X, UserMinus, Link2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import * as adminService from '../../services/adminService'
 
 const emptyClass = {
   id: '',
@@ -15,17 +14,7 @@ const emptyClass = {
   trainerInviteToken: '',
 }
 
-const initialStudents = [
-  { id: 1, name: 'Alice Nguyen', username: 'alice123' },
-  { id: 2, name: 'Bob Tran', username: 'bob_t' },
-  { id: 3, name: 'Sarah Lee', username: 'sarah_lee' },
-  { id: 4, name: 'Minh Pham', username: 'minh_p' },
-]
-
-const initialTrainers = [
-  { id: 1, name: 'Alex Nguyen', username: 'alexn' },
-  { id: 2, name: 'Sarah Tran', username: 'sarah_tran' },
-]
+type ClassMember = { id: string; name: string; username: string }
 
 export function ManageClass() {
   const { classId } = useParams()
@@ -36,8 +25,8 @@ export function ManageClass() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [students, setStudents] = useState(initialStudents)
-  const [trainers, setTrainers] = useState(initialTrainers)
+  const [students, setStudents] = useState<ClassMember[]>([])
+  const [trainers, setTrainers] = useState<ClassMember[]>([])
   const [copiedStudent, setCopiedStudent] = useState(false)
   const [copiedTrainer, setCopiedTrainer] = useState(false)
   const [showStudentLink, setShowStudentLink] = useState(false)
@@ -55,31 +44,21 @@ export function ManageClass() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/api/admin/classes`, { credentials: 'include' })
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data?.message || 'Unable to load class')
-        }
-
-        const classRecord = data?.data?.classes?.find((item: { _id?: string }) => item._id === classId)
-        if (!classRecord) {
-          throw new Error('Class not found')
-        }
+        const classRecord = await adminService.getClassDetail(classId)
 
         const loadedClass = {
-          id: classRecord._id,
+          id: classRecord.id,
           name: classRecord.name,
-          description: classRecord.description || '',
+          description: classRecord.description,
           status: classRecord.isActive ? 'ACTIVE' as const : 'INACTIVE' as const,
-          studentJoinToken: classRecord.studentJoinToken || '',
-          trainerInviteToken: classRecord.trainerInviteToken || '',
+          studentJoinToken: '',
+          trainerInviteToken: '',
         }
 
         setCls(loadedClass)
         setForm({ name: loadedClass.name, description: loadedClass.description, status: loadedClass.status })
-        setStudentJoinLink(loadedClass.studentJoinToken ? `${window.location.origin}/register?token=${loadedClass.studentJoinToken}` : '')
-        setTrainerInviteLink(loadedClass.trainerInviteToken ? `${window.location.origin}/register?token=${loadedClass.trainerInviteToken}` : '')
+        setStudents(classRecord.students.map((member) => ({ id: member.id, name: member.name, username: member.email })))
+        setTrainers(classRecord.trainers.map((member) => ({ id: member.id, name: member.name, username: member.email })))
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Unable to load class')
       } finally {
@@ -97,19 +76,9 @@ export function ManageClass() {
     setGeneratingLink(role)
 
     try {
-      const response = await fetch(`${API_URL}/api/classes/${classId}/generate-join-link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ role, expiresInDays: 2 }),
-      })
-      const data = await response.json()
+      const data = await adminService.generateJoinLink(classId, role)
 
-      if (!response.ok) {
-        throw new Error(data?.message || 'Unable to generate invitation link')
-      }
-
-      const joinUrl = data?.data?.joinUrl
+      const joinUrl = (data.data as { joinUrl?: string } | undefined)?.joinUrl
       if (!joinUrl) {
         throw new Error('The server did not return an invitation link')
       }
@@ -140,44 +109,21 @@ export function ManageClass() {
       const statusChanged = form.status !== cls.status
 
       if (detailsChanged) {
-        const response = await fetch(`${API_URL}/api/admin/classes/${classId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            name: form.name.trim(),
-            description: form.description,
-          }),
-        })
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data?.message || 'Unable to update class information')
-        }
+        const data = await adminService.updateClass(classId, form.name.trim(), form.description)
 
         setCls((prev) => ({
           ...prev,
-          name: data?.data?.name || form.name.trim(),
-          description: data?.data?.description || form.description,
+          name: (data.data as { name?: string } | undefined)?.name || form.name.trim(),
+          description: (data.data as { description?: string } | undefined)?.description || form.description,
         }))
       }
 
       if (statusChanged) {
-        const response = await fetch(`${API_URL}/api/admin/classes/${classId}/active`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ isActive: form.status === 'ACTIVE' }),
-        })
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data?.message || 'Unable to update class status')
-        }
+        const data = await adminService.updateClassActive(classId, form.status === 'ACTIVE')
 
         setCls((prev) => ({
           ...prev,
-          status: data?.data?.class?.isActive ? 'ACTIVE' : 'INACTIVE',
+          status: ((data.data as { class?: { isActive?: boolean } } | undefined)?.class?.isActive ? 'ACTIVE' : 'INACTIVE'),
         }))
       }
 
@@ -330,7 +276,15 @@ export function ManageClass() {
                 <span className="text-sm font-semibold text-gray-900">{s.name}</span>
                 <span className="text-sm text-gray-500">@{s.username}</span>
                 <button
-                  onClick={() => setStudents((prev) => prev.filter((x) => x.id !== s.id))}
+                  onClick={async () => {
+                    if (!classId) return
+                    try {
+                      await adminService.removeStudent(classId, s.id)
+                      setStudents((prev) => prev.filter((x) => x.id !== s.id))
+                    } catch (removeError) {
+                      setError(removeError instanceof Error ? removeError.message : 'Unable to remove student')
+                    }
+                  }}
                   className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
                 >
                   <UserMinus size={14} /> Remove
@@ -387,7 +341,15 @@ export function ManageClass() {
                 <span className="text-sm font-semibold text-gray-900">{t.name}</span>
                 <span className="text-sm text-gray-500">@{t.username}</span>
                 <button
-                  onClick={() => setTrainers((prev) => prev.filter((x) => x.id !== t.id))}
+                  onClick={async () => {
+                    if (!classId) return
+                    try {
+                      await adminService.removeTrainer(classId, t.id)
+                      setTrainers((prev) => prev.filter((x) => x.id !== t.id))
+                    } catch (removeError) {
+                      setError(removeError instanceof Error ? removeError.message : 'Unable to remove trainer')
+                    }
+                  }}
                   className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium"
                 >
                   <UserMinus size={14} /> Remove

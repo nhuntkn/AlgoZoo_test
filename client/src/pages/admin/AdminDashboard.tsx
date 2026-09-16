@@ -1,49 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, X, CheckCircle2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-
-type ClassItem = {
-  id: number | string
-  name: string
-  description: string
-  status: 'ACTIVE' | 'INACTIVE'
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import { useAdminClasses } from '../../hooks/useAdminClasses'
 
 export function AdminDashboard() {
-  const [classes, setClasses] = useState<ClassItem[]>([])
+  const { classes, isLoading, error, setError, createClass } = useAdminClasses()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', description: '' })
   const [done, setDone] = useState(false)
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  useEffect(() => {
-    const loadClasses = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/admin/classes`, { credentials: 'include' })
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data?.message || 'Unable to load classes')
-        }
-
-        setClasses((data?.data?.classes || []).map((classRecord: { _id: string; name: string; description?: string; isActive: boolean }) => ({
-          id: classRecord._id,
-          name: classRecord.name,
-          description: classRecord.description || '',
-          status: classRecord.isActive ? 'ACTIVE' : 'INACTIVE',
-        })))
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load classes')
-      }
-    }
-
-    loadClasses()
-  }, [])
 
   const handleCreate = async () => {
     const name = form.name.trim()
@@ -53,28 +20,7 @@ export function AdminDashboard() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/admin/classes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name, description: form.description.trim() }),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data?.message || 'Unable to create class')
-      }
-
-      const createdClass = data?.data
-      setClasses((prev) => [
-        {
-          id: createdClass?.class_id,
-          name: createdClass?.name || name,
-          description: createdClass?.description || form.description.trim(),
-          status: 'ACTIVE',
-        },
-        ...prev,
-      ])
+      await createClass(name, form.description.trim())
       setDone(true)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to create class')
@@ -117,13 +63,14 @@ export function AdminDashboard() {
 
       <div className="space-y-3">
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-        {!error && classes.length === 0 && <p className="text-sm text-gray-500">No classes found.</p>}
+        {isLoading && <p className="text-sm text-gray-500">Loading classes...</p>}
+        {!isLoading && !error && classes.length === 0 && <p className="text-sm text-gray-500">No classes found.</p>}
         {classes.map((c) => (
           <div key={c.id} className="bg-white rounded-2xl px-6 py-5 shadow-sm flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-bold text-gray-900">{c.name}</h3>
-                <Badge variant={c.status}>{c.status === 'ACTIVE' ? 'Active' : 'Inactive'}</Badge>
+                <Badge variant={c.isActive ? 'ACTIVE' : 'INACTIVE'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
               </div>
               {c.description && (
                 <p className="text-sm text-gray-400">{c.description}</p>

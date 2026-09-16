@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './hooks/useAuth'
 import { NotificationProvider } from './context/NotificationContext'
 import { AppLayout } from './components/layout/AppLayout'
 import { NotificationsPage } from './pages/NotificationsPage'

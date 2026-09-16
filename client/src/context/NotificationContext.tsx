@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react'
-import type { Role } from './AuthContext'
+import type { Role } from '../types/auth'
 
 export type NotificationType =
   | 'SUBMISSION_CREATED'

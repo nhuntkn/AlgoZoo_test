@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
-import type { Role } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
+import type { Role } from '../../types/auth'
 
 export function RegisterPage({ forcedRole }: { forcedRole?: Role }) {
   const [searchParams] = useSearchParams()
