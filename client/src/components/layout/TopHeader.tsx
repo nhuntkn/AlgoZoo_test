@@ -6,9 +6,9 @@ import { NotificationDropdown } from '../ui/NotificationDropdown'
 
 export function TopHeader() {
   const { user } = useAuth()
-  if (!user) return null
   const { getUnreadCount } = useNotifications()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  if (!user) return null
   const unread = getUnreadCount(user.role)
 
   return (

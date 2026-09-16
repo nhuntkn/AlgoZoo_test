@@ -47,12 +47,8 @@ interface NotificationDropdownProps {
 
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
   const { user } = useAuth()
-  if (!user) return null
   const { getForRole, getUnreadCount, markAllRead } = useNotifications()
   const ref = useRef<HTMLDivElement>(null)
-
-  const notifs = getForRole(user.role)
-  const unreadCount = getUnreadCount(user.role)
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -63,6 +59,11 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     document.addEventListener('mousedown', handleOutsideClick)
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [onClose])
+
+  if (!user) return null
+
+  const notifs = getForRole(user.role)
+  const unreadCount = getUnreadCount(user.role)
 
   return (
     <div
