@@ -115,6 +115,29 @@ exports.verifyAdmin = async (req, res, next) => {
   }
 };
 
+// Middleware to check if user is a trainer OR an admin (both are allowed through)
+exports.verifyTrainerOrAdmin = async (req, res, next) => {
+  try {
+    // Retrieve the user from the request object
+    const { user } = req;
+
+    // Check if user exists
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'Sorry, User does not exist' });
+    }
+
+    // Check if user has trainer or admin privileges
+    if (user.role === 'trainer' || user.role === 'admin') {
+      return next(); // Proceed if the user is a trainer or an admin
+    } else {
+      return res.status(403).json({ status: 'error', message: 'Access denied. Only trainer or admin can access.' });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+  }
+};
+
 // Middleware to check if user is an trainer
 exports.verifyTrainer = async (req, res, next) => {
   try {
@@ -137,6 +160,27 @@ exports.verifyTrainer = async (req, res, next) => {
     return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };
+
+// Middleware to check if user is a student
+exports.verifyStudent = async(req, res, next) => {
+  try {
+    const { user } = req;
+
+    if (!user) {
+      return res.status(401).json({ status: 'error', message: 'Sorry, User does not exist' });
+    }
+
+    if (user.role === 'student') {
+      return next();
+    } else {
+      return res.status(403).json({ status: 'error', message: 'Access denied. Only student can access.' });
+    }    
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+  }
+};
+
 // Helper: Auto refresh access token if expired and refresh token is valid
 const tryRefreshAccessToken = (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;

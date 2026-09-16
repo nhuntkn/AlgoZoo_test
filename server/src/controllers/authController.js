@@ -249,25 +249,6 @@ exports.loginUser = async (req, res) => {
     }
 };
 
-/**
- * Return the currently authenticated user.
- * GET /routes/auth/me
- */
-exports.getCurrentUser = async (req, res) => {
-    return res.status(200).json({
-        status: 'success',
-        data: {
-            id: req.user._id,
-            fullname: req.user.fullname,
-            email: req.user.email,
-            isActive: req.user.isActive,
-            role: req.user.role,
-            createdAt: req.user.createdAt,
-            updatedAt: req.user.updatedAt,
-        },
-    });
-};
-
 /** 
  * Controller for logout
  * POST /routes/auth/logout
@@ -319,6 +300,34 @@ exports.refreshToken = async (req, res) => {
     return res.status(200).json({ status: 'success', message: 'JWT refresh token generated successfully' });
   } catch (error) {
     console.error('Refresh Token Error:', error);
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+  }
+};
+/**
+ * Controller to get currently authenticated user (dùng khi frontend refresh page)
+ * GET /routes/auth/me
+ */
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const { user } = req;
+    
+    return res.status(200).json({
+      status: 'success',
+      message: 'Current user retrieved successfully',
+      data: {
+        user: {
+          id: user._id,
+          fullname: user.fullname,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
   }
 };

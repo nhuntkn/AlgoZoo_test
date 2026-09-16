@@ -7,9 +7,8 @@ const {loginUser, logoutUser, register, refreshToken, getCurrentUser} = require(
 
 router.route('/auth/login').post(loginUser);
 router.route('/auth/register').post(register);  
-router.route('/auth/me').get(isAuthenticatedUser, getCurrentUser);
 router.route('/auth/logout').post(isAuthenticatedUser, logoutUser);
-
+router.route('/auth/me').get(isAuthenticatedUser, getCurrentUser)
 
 // route for get user refresh JWT Token
 router.route('/auth/refresh-token').get(isRefreshTokenValid, refreshToken);
