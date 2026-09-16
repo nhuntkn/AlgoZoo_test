@@ -1,11 +1,8 @@
 const User = require('../models/user');
 const Class = require('../models/class');
 const ClassMember = require("../models/classMember")
-const Submission = require('../models/submission');
 const ClassProblem = require('../models/classProblem')
-const Problem = require('../models/problem');
 const mongoose = require('mongoose');
-
 // TODO: Controller for admin to get all users information
 exports.getUser = async (req,res) => {
   try {
@@ -342,95 +339,107 @@ exports.updateClassDetails = async (req, res) => {
 
 // Controller for admin to update class active status
 // PATCH /api/admin/classes/:class_id/active
+
 exports.updateClassActive = async (req, res) => {
     const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      const class_id = req.params.class_id?.trim();
+        const class_id = req.params.class_id?.trim();
+        const { isActive } = req.body || {};
 
-      if (!mongoose.Types.ObjectId.isValid(class_id)) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(400).json({
-          status: 'error',
-          message: 'Invalid class_id',
+        // 1. Validate class_id
+        if (!mongoose.Types.ObjectId.isValid(class_id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid class_id',
+            });
+        }
+
+        // 2. Validate isActive
+        if (typeof isActive !== 'boolean') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'isActive (boolean) is required',
+            });
+        }
+
+        let classDoc;
+        let affectedStudents = 0;
+
+        // 3. Run all database operations inside transaction
+        await session.withTransaction(async () => {
+
+            // Update class status
+            classDoc = await Class.findByIdAndUpdate(
+                class_id,
+                {
+                    isActive,
+                    archivedAt: isActive ? null : new Date(),
+                },
+                {
+                    returnDocument: 'after',
+                    session,
+                }
+            );
+
+            if (!classDoc) {
+                const error = new Error('Class not found');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            // Get all students belonging to this class
+            const members = await ClassMember.find({
+                classId: class_id,
+            })
+                .select('userId')
+                .session(session);
+
+            const memberUserIds = members.map((member) => member.userId);
+
+            // Update students' active status
+            if (memberUserIds.length) {
+                const result = await User.updateMany(
+                    {
+                        _id: { $in: memberUserIds },
+                        role: 'student',
+                        isActive: !isActive,
+                    },
+                    {
+                        $set: { isActive },
+                    },
+                    {
+                        session,
+                    }
+                );
+
+                affectedStudents = result.modifiedCount || 0;
+            }
         });
-      }
 
-      const { isActive } = req.body || {};
-
-      if (typeof isActive !== 'boolean') {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(400).json({
-          status: 'error',
-          message: 'isActive (boolean) is required',
+        // 4. Transaction succeeded
+        return res.status(200).json({
+            status: 'success',
+            message: isActive
+                ? `Class activated successfully. ${affectedStudents} student(s) were reactivated`
+                : `Class deactivated successfully. ${affectedStudents} student(s) were set to inactive`,
+            data: {
+                affectedStudents,
+                class: classDoc,
+            },
         });
-      }
 
-      // 1. Update class status
-      const classDoc = await Class.findByIdAndUpdate(
-        class_id,
-        { isActive, archivedAt: isActive ? null : new Date() },
-        { returnDocument: 'after', session }
-      );
-
-      if (!classDoc) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(404).json({
-          status: 'error',
-          message: 'Class not found',
-        });
-      }
-
-      // 2. Get all student userIds belonging to this class
-      const members = await ClassMember.find({ classId: class_id })
-        .select('userId')
-        .session(session);
-      const memberUserIds = members.map((m) => m.userId);
-
-      let affectedStudents = 0;
-
-      if (memberUserIds.length) {
-        const result = await User.updateMany(
-          {
-            _id: { $in: memberUserIds },
-            role: 'student',
-            isActive: !isActive,
-          },
-          { $set: { isActive } },
-          { session }
-        );
-        affectedStudents = result.modifiedCount || 0;
-      }
-
-      await session.commitTransaction();
-      session.endSession();
-
-      return res.status(200).json({
-        status: 'success',
-        message: isActive
-          ? `Class activated successfully. ${affectedStudents} student(s) were reactivated`
-          : `Class deactivated successfully. ${affectedStudents} student(s) were set to inactive`,
-        data: {
-          affectedStudents,
-          class: classDoc,
-    
-        },
-      });
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      console.error(error);
-      return res.status(500).json({
-        status: 'error',
-        message: 'SERVER SIDE ERROR',
-      });
-    }
-  };
+        console.error(error);
 
+        return res.status(error.statusCode || 500).json({
+            status: 'error',
+            message: error.message || 'SERVER SIDE ERROR',
+        });
+
+    } finally {
+        await session.endSession();
+    }
+};
 // 
 /**
  * Controller for admin dashboard overview
@@ -732,6 +741,99 @@ exports.getDashboard = async (req, res) => {
         studentsProgress,
         subjectOverview,
       },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+  }
+};
+
+// Controller for admin to remove a trainer from a class
+// DELETE /api/admin/classes/:class_id/trainer/:trainer_id
+exports.removeTrainerFromClass = async (req, res) => {
+  try {
+    const { class_id, trainer_id } = req.params;
+
+    const classDoc = await Class.findById(class_id);
+    if (!classDoc) {
+      return res.status(404).json({ status: 'error', message: 'Class not found' });
+    }
+
+    const trainerUser = await User.findById(trainer_id);
+    if (!trainerUser) {
+      return res.status(404).json({ status: 'error', message: 'Trainer not found' });
+    }
+    if (trainerUser.role !== 'trainer') {
+      return res.status(400).json({ status: 'error', message: 'Specified user is not a trainer' });
+    }
+
+    const membership = await ClassMember.findOneAndDelete({
+      classId: class_id,
+      userId: trainer_id,
+    });
+
+    if (!membership) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'This trainer is not a member of the specified class',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Trainer removed from class successfully',
+      data: { 
+        class_id, 
+        trainer_id,
+        class_name: classDoc.name,
+        trainer_name: trainerUser.fullname,
+       },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
+  }
+};
+
+// Controller for admin to remove a student from a class
+// DELETE /api/admin/classes/:class_id/students/:student_id
+exports.removeStudentFromClass = async (req, res) => {
+  try {
+    const { class_id, student_id } = req.params;
+
+    const classDoc = await Class.findById(class_id);
+    if (!classDoc) {
+      return res.status(404).json({ status: 'error', message: 'Class not found' });
+    }
+
+    const studentUser = await User.findById(student_id);
+    if (!studentUser) {
+      return res.status(404).json({ status: 'error', message: 'Student not found' });
+    }
+    if (studentUser.role !== 'student') {
+      return res.status(400).json({ status: 'error', message: 'Specified user is not a student' });
+    }
+
+    const membership = await ClassMember.findOneAndDelete({
+      classId: class_id,
+      userId: student_id,
+    });
+
+    if (!membership) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'This student is not a member of the specified class',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Student removed from class successfully',
+      data: { class_id,
+         student_id,
+         class_name: classDoc.name,
+         student_name: studentUser.fullname,
+         },
     });
   } catch (error) {
     console.error(error);

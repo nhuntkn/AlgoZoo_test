@@ -1,6 +1,18 @@
 const router = require('express').Router();
 const {isAuthenticatedUser, verifyAdmin} = require('../middlewares/authMiddleware');
-const {getUserWithRole,getUser, getUserById,updateUserActive, createClass, updateClassDetails, updateClassActive, getAllClasses, getClassDetail, getDashboard} = require('../controllers/adminController');
+const {getUserWithRole,
+    getUser, 
+    getUserById,
+    updateUserActive,
+    createClass,
+    updateClassDetails, 
+    updateClassActive, 
+    getAllClasses, 
+    getClassDetail, 
+    getDashboard,
+    removeTrainerFromClass,
+    removeStudentFromClass
+} = require('../controllers/adminController');
 
 
 // route for admin to
@@ -13,5 +25,7 @@ router.route('/admin/classes').get(isAuthenticatedUser, verifyAdmin, getAllClass
 router.route('/admin/classes/:class_id').get(isAuthenticatedUser, verifyAdmin,getClassDetail);  // get class details (admin)
 router.route('/admin/classes/:class_id').patch(isAuthenticatedUser, verifyAdmin,updateClassDetails);  // update class details (admin)
 router.route('/admin/classes/:class_id/active').patch(isAuthenticatedUser, verifyAdmin,updateClassActive);  // update class active status (admin)
-router.route('/admin/dashboard').get(isAuthenticatedUser,verifyAdmin,getDashboard)
+router.route('/admin/dashboard').get(isAuthenticatedUser,verifyAdmin,getDashboard) // get dashboard information
+router.route('/admin/classes/:class_id/trainer/:trainer_id').delete(isAuthenticatedUser, verifyAdmin, removeTrainerFromClass);
+router.route('/admin/classes/:class_id/student/:student_id').delete(isAuthenticatedUser, verifyAdmin, removeStudentFromClass);
 module.exports = router;
