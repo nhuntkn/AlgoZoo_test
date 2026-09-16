@@ -88,6 +88,144 @@ Frontend runs at:
 
 - `http://localhost:5173`
 
+## Backend Integration Guide
+
+The frontend is organized around the backend API contract. Backend routes and response shapes are the source of truth; frontend mock data should not be added when an API endpoint exists.
+
+### Frontend layers
+
+```text
+client/src/
+├── pages/       Route-level screens and user workflows
+├── components/  Reusable visual components
+├── services/    HTTP requests and backend response mapping
+├── hooks/       Reusable React data-loading and state logic
+├── types/       Shared TypeScript models and API response types
+└── context/     Global state such as the authenticated user
+```
+
+Responsibilities:
+
+- `types/` describes backend models and response contracts. Examples include `User`, `Class`, `ClassMember`, `Problem`, `ClassProblem`, `Submission`, and `File`.
+- `services/` calls backend endpoints. Services use the shared API client, send cookies, unwrap response envelopes, and normalize backend field names for the UI.
+- `hooks/` owns reusable loading/error state around services. For example, `useAuth`, `useAdminClasses`, `useAdminUsers`, `useClassDetail`, and `useProblems`.
+- `context/` owns application-wide state. `AuthContext` stores the current user and delegates network requests to `authService`.
+- `pages/` renders data from hooks/services. Pages should not contain duplicated `fetch` calls or hard-coded records.
+
+### Adding a new backend feature
+
+1. Confirm the route, middleware, HTTP method, request body, query parameters, and response envelope in `server/src/routes` and its controller.
+2. Add or update the matching TypeScript model in `client/src/types`.
+3. Add a function to the relevant service in `client/src/services` using the shared `api` client.
+4. Normalize backend names such as `_id`, `fullname`, `class_id`, and `isActive` at the service boundary when the UI needs different names.
+5. Add a hook when more than one page needs the same loading, error, or refresh behavior.
+6. Replace page mock data with the hook/service result.
+7. Add loading, empty, error, and success states to the page.
+8. Run `npm run build` in `client` and syntax-check the affected backend files.
+
+### Shared API clients
+
+Use `client/src/services/api.ts` for the current backend-integrated feature pages. It:
+
+- Uses `VITE_API_URL` or `VITE_API_BASE_URL`.
+- Normalizes the URL so requests target `/api`.
+- Sends cookies with `credentials: 'include'`.
+- Supports `GET`, `POST`, `PATCH`, `DELETE`, and multipart upload requests.
+- Converts non-2xx responses into `ApiError` objects.
+
+Authentication uses `client/src/services/authService.ts` and `client/src/hooks/useAuth.ts`. Auth cookies are HttpOnly, so the browser must send them rather than JavaScript reading them directly.
+
+### Current service coverage
+
+| Service | Backend responsibility |
+| --- | --- |
+| `authService` | Login, registration, logout, current user, token refresh |
+| `adminService` | Admin users, classes, dashboard, member removal, invitation links |
+| `classroomService` | Trainer dashboards, classes, assigned class problems |
+| `problemService` | Trainer/admin problem bank CRUD |
+| `submissionService` | Trainer submission lists, details, and reviews |
+| `studentService` | Student classes, dashboards, assigned problems, submissions |
+| `fileService` | Authenticated file uploads for submission attachments |
+
+## Backend API Coverage
+
+All backend routes are mounted under `/api`.
+
+### Auth routes
+
+- `POST /api/auth/login`
+- `POST /api/auth/register`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `GET /api/auth/refresh-token`
+
+Login and registration set `accessToken` and `refreshToken` HttpOnly cookies. Browser requests must use `credentials: 'include'`.
+
+### Admin routes
+
+- `GET /api/admin/dashboard?class_id=:id`
+- `GET /api/admin/get-user`
+- `GET /api/admin/get-user/:id`
+- `GET /api/admin/users?role=student`
+- `PATCH /api/admin/users/:user_id`
+- `GET /api/admin/classes`
+- `POST /api/admin/classes`
+- `GET /api/admin/classes/:class_id`
+- `PATCH /api/admin/classes/:class_id`
+- `PATCH /api/admin/classes/:class_id/active`
+- `DELETE /api/admin/classes/:class_id/student/:student_id`
+- `DELETE /api/admin/classes/:class_id/trainer/:trainer_id`
+- `POST /api/classes/:classId/generate-join-link`
+
+Admin pages now use live class, user, member, dashboard, progress, and invitation data. Unsupported UI actions, such as class deletion when no delete route exists, should remain unavailable.
+
+### Trainer routes
+
+- `GET /api/trainer/dashboard`
+- `GET /api/trainer/classes`
+- `GET /api/trainer/classes/:class_id`
+- `GET /api/trainer/classes/:class_id/problems?search=...`
+- `POST /api/trainer/classes/:class_id/problems`
+- `DELETE /api/trainer/classes/:class_id/problems/:problem_id`
+- `GET /api/trainer/submissions`
+- `GET /api/trainer/submissions/:submission_id`
+- `PATCH /api/trainer/review/:submission_id`
+
+Trainer pages use these endpoints for class lists, class detail, assignment management, review queues, submission details, and feedback. Trainer-only routes require the `trainer` role; class reads allow trainer/admin where defined by the backend middleware.
+
+### Problem bank routes
+
+- `GET /api/problems?search=...&difficulty=Easy`
+- `POST /api/problems`
+- `GET /api/problems/:problem_id`
+- `PATCH /api/problems/:problem_id`
+- `DELETE /api/problems/:problem_id`
+
+Backend problem values are `OS`, `DB`, `DSA`, and `OTHER`. The UI maps `DB` to `Database` and `OTHER` to `Other` only at the service boundary.
+
+### Student routes
+
+- `GET /api/student/classes`
+- `GET /api/student/classes/:classId/dashboard`
+- `GET /api/student/classes/:classId/problems`
+- `GET /api/student/problems/:classProblemId`
+- `POST /api/student/submissions`
+
+Student dashboard, class, problem-list, submission-list, submission-detail, and workspace pages use these endpoints. The student workspace submits the authenticated student account's work; it does not send `student_id` from the browser.
+
+### File uploads
+
+- `POST /api/files`
+
+The request is authenticated `multipart/form-data` with a `file` field. Accepted types are PNG, JPG, JPEG, GIF, and PDF files up to 10 MB. The response returns a `file_id`, which can be included in a student submission content block.
+
+For DSA submissions, the backend requires both:
+
+1. A `code` or `text` content block.
+2. An `image` or `file` content block.
+
+The student workspace uploads the proof file first, then submits both blocks to `/api/student/submissions`.
+
 ## API Routes
 
 All backend routes are mounted under `/api`.
@@ -144,60 +282,6 @@ All admin routes require an authenticated user with the `admin` role.
   - Multipart form-data field: `file`
   - Accepts PNG, JPG, JPEG, GIF, and PDF files up to 10 MB
 
-## API Usage Examples
-
-### Login
-
-```bash
-curl -i -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"secret123"}'
-```
-
-### Register
-
-```bash
-curl -i -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "token":"invite-token",
-    "fullname":"Alice Nguyen",
-    "email":"alice@example.com",
-    "password":"secret123"
-  }'
-```
-
-### Create a class (admin)
-
-```bash
-curl -i -X POST http://localhost:3000/api/admin/classes \
-  -H "Content-Type: application/json" \
-  --cookie "accessToken=YOUR_ACCESS_TOKEN" \
-  -d '{"name":"WeCamp Batch 23","description":"DSA training class"}'
-```
-
-### Generate a student invitation link (admin)
-
-```bash
-curl -i -X POST http://localhost:3000/api/classes/CLASS_ID/generate-join-link \
-  -H "Content-Type: application/json" \
-  --cookie "accessToken=YOUR_ACCESS_TOKEN" \
-  -d '{"role":"student","expiresInDays":2}'
-```
-
-### Refresh token
-
-```bash
-curl -i -X GET http://localhost:3000/api/auth/refresh-token \
-  --cookie "refreshToken=YOUR_REFRESH_TOKEN"
-```
-
-### Logout
-
-```bash
-curl -i -X POST http://localhost:3000/api/auth/logout \
-  --cookie "accessToken=YOUR_ACCESS_TOKEN; refreshToken=YOUR_REFRESH_TOKEN"
-```
 
 ## Auth Flow
 
@@ -220,9 +304,9 @@ Typical flow:
 2. The admin opens the class and generates a student or trainer invitation link.
 3. The backend stores the role-specific token and expiration date on the class.
 4. The admin sends the returned frontend URL to the invitee:
-  `http://localhost:5173/register?token=INVITE_TOKEN`
-5. The invitee completes registration through the link.
-6. The backend validates the token, creates the account, creates the `ClassMember` record, and sets authentication cookies.
+  `http://localhost:5173/register?token=INVITE_TOKEN&role=trainer`
+5. A new user completes registration through the link. An existing trainer can use the link's `Log in and join instead` flow.
+6. The backend validates the token, creates or finds the account, creates the `ClassMember` record, and sets authentication cookies.
 
 The registration page is not a public sign-up page. Opening `/register` without a token shows an invitation-required message.
 
@@ -232,7 +316,9 @@ The registration page is not a public sign-up page. Opening `/register` without 
 - Unauthenticated users are redirected to `/login`.
 - Admins can create classes, edit class name and description, toggle class status, generate student/trainer links, and view real users.
 - Admins can activate or deactivate students from the Users page.
-- Class and user lists are loaded from MongoDB through the backend API; no demo users or classes are used.
+- Trainers can view their classes, assigned problems, submission queues, submission details, and review submissions.
+- Students can view enrolled classes, live class progress, assigned problems, submit solutions, upload DSA proof files, and view feedback.
+- Class, user, problem, submission, and progress data are loaded from MongoDB through the backend API; no demo records are used in the integrated flows.
 
 ## Troubleshooting
 
