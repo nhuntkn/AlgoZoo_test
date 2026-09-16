@@ -63,3 +63,11 @@ export function removeStudent(classId: string, studentId: string) {
 export function removeTrainer(classId: string, trainerId: string) {
   return apiRequest<ApiPayload>(`/api/admin/classes/${classId}/trainer/${trainerId}`, { method: 'DELETE' })
 }
+
+export function getDashboard() {
+  return apiRequest<ApiPayload>(`/api/admin/dashboard`, { method: 'GET' })
+}
+
+export function getADashboard(classId: string) {
+  return apiRequest<ApiPayload>(`/api/admin/dashboard/${classId}`, { method: 'GET' })
+}
