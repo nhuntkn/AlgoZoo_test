@@ -8,24 +8,7 @@ import {
 } from 'lucide-react'
 import { TypeBadge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-
-export type ProblemType = 'DSA' | 'OS' | 'Database' | 'Other'
-export type Difficulty = 'easy' | 'medium' | 'hard'
-
-export type Resource = {
-  id: number
-  label: string
-  url: string
-  filename?: string
-}
-
-export type ProblemDraft = {
-  title: string
-  type: ProblemType
-  difficulty: Difficulty
-  description: string
-  resources: Resource[]
-}
+import type { ProblemType, Difficulty, Resource, ProblemDraft } from '../../types/problem'
 
 interface ProblemComposerProps {
   mode: 'create' | 'edit'

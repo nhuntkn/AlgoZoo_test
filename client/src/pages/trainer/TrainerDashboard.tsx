@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, X, RotateCcw, ArrowRight, Clock, CheckCircle, Loader2 } from 'lucide-react'
+import { ChevronDown, RotateCcw, ArrowRight, Clock, CheckCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { getSubmissions, type SubmissionListItem } from '../../services/submissionService'
+import { getSubmissions } from '../../services/submissionService'
+import type { SubmissionListItem } from '../../types/submission'
 import { getTrainerClasses } from '../../services/classroomService'
 import { mapProblemType } from '../../services/problemService'
 
@@ -175,27 +176,17 @@ export function TrainerDashboard() {
         {/* Subject */}
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Subject</span>
-          {subjectFilter !== 'all' ? (
-            <button
-              onClick={() => setSubjectFilter('all')}
-              className="flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-gray-50 min-w-[130px]"
+          <div className="relative">
+            <select
+              value={subjectFilter}
+              onChange={(e) => setSubjectFilter(e.target.value as Subject | 'all')}
+              className="appearance-none pl-3 pr-8 py-1.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/30 min-w-[130px]"
             >
-              <span className="flex-1 text-left">{subjectFilter}</span>
-              <X size={12} className="text-gray-500 flex-shrink-0" />
-            </button>
-          ) : (
-            <div className="relative">
-              <select
-                value="all"
-                onChange={(e) => setSubjectFilter(e.target.value as Subject | 'all')}
-                className="appearance-none pl-3 pr-8 py-1.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/30 min-w-[130px]"
-              >
-                <option value="all">All Subjects</option>
-                {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-          )}
+              <option value="all">All Subjects</option>
+              {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
         </div>
 
         {hasActiveFilters && (

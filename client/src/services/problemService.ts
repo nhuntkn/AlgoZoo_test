@@ -1,24 +1,6 @@
-import type { ProblemType, Difficulty, Resource } from '../components/problem/ProblemComposer'
+import type { ProblemType, Difficulty, Resource, Problem, ProblemDraft } from '../types/problem'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
-export type Problem = {
-  id: string
-  title: string
-  type: ProblemType
-  difficulty: Difficulty
-  description: string
-  resources: Resource[]
-  resource_url?: string
-}
-
-export type ProblemDraft = {
-  title: string
-  type: ProblemType
-  difficulty: Difficulty
-  description: string
-  resources: Resource[]
-}
 
 type BackendProblemType = 'OS' | 'DB' | 'DSA' | 'OTHER'
 type BackendDifficulty = 'Easy' | 'Medium' | 'Hard'

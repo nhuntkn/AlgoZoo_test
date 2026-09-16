@@ -1,3 +1,5 @@
+import type { SubmissionStatus, SubmissionListItem, SubmissionDetail } from '../types/submission'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -11,18 +13,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(data?.message || 'Request failed')
   }
   return data
-}
-
-export type SubmissionStatus = 'pending' | 'late' | 'review'
-
-export type SubmissionListItem = {
-  submission_id: string
-  student: { id: string; name: string } | null
-  problem: { id: string; title: string; problemType: string } | null
-  class: { id: string; className: string } | null
-  status: SubmissionStatus
-  is_late: boolean
-  submitted_at: string
 }
 
 export async function getSubmissions(params?: {
@@ -39,28 +29,6 @@ export async function getSubmissions(params?: {
   const qs = query.toString()
   const data = await request<{ data: SubmissionListItem[] }>(`/trainer/submissions${qs ? `?${qs}` : ''}`)
   return data.data
-}
-
-export type ContentBlock = {
-  type: 'text' | 'code' | 'image' | 'file'
-  content?: string
-  language?: string
-  file_id?: string
-  filename?: string
-}
-
-export type SubmissionDetail = {
-  submission_id: string
-  content_blocks: ContentBlock[]
-  student: { id: string; name: string } | null
-  problem: { id: string; title: string } | null
-  class: { id: string; className: string } | null
-  status: SubmissionStatus
-  is_late: boolean
-  feedback: string
-  reviewed_by: { id: string; name: string } | null
-  reviewed_at: string | null
-  submitted_at: string
 }
 
 export async function getSubmissionDetail(id: string): Promise<SubmissionDetail> {

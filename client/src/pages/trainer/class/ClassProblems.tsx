@@ -8,14 +8,14 @@ import { ProgressBar } from '../../../components/ui/ProgressBar'
 import { useNotifications } from '../../../context/NotificationContext'
 import { useProblems } from '../../../hooks/useProblems'
 import { useClassDetail } from '../../../hooks/useClassDetail'
-import { getProblemDetail, mapProblemType, type Problem } from '../../../services/problemService'
+import { getProblemDetail, mapProblemType } from '../../../services/problemService'
 import {
   getClassProblems,
   assignProblemToClass,
   removeClassProblem,
   type ClassProblem,
 } from '../../../services/classroomService'
-import type { ProblemType } from '../../../components/problem/ProblemComposer'
+import type { ProblemType, Problem } from '../../../types/problem'
 
 const typeOrder: ProblemType[] = ['DSA', 'OS', 'Database', 'Other']
 
@@ -42,6 +42,7 @@ export function ClassProblems() {
   const [problemsError, setProblemsError] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<ClassProblem | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
@@ -157,12 +158,13 @@ export function ClassProblems() {
   const handleRemove = async () => {
     if (!removeTarget?.problem_id) return
     setRemoving(true)
+    setRemoveError(null)
     try {
       await removeClassProblem(classId, removeTarget.problem_id)
       setProblems((prev) => prev.filter((p) => p.problem_id !== removeTarget.problem_id))
       setRemoveTarget(null)
     } catch (err) {
-      setProblemsError(err instanceof Error ? err.message : 'Could not remove this problem')
+      setRemoveError(err instanceof Error ? err.message : 'Could not remove this problem')
     } finally {
       setRemoving(false)
     }
@@ -308,7 +310,7 @@ export function ClassProblems() {
                             View Submissions <ChevronRight size={12} />
                           </Link>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setRemoveTarget(p) }}
+                            onClick={(e) => { e.stopPropagation(); setRemoveError(null); setRemoveTarget(p) }}
                             className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                           >
                             <Trash2 size={14} />
@@ -340,9 +342,12 @@ export function ClassProblems() {
                   </p>
                 </div>
               </div>
+              {removeError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{removeError}</p>
+              )}
               <div className="flex gap-2 pt-1">
                 <button
-                  onClick={() => setRemoveTarget(null)}
+                  onClick={() => { setRemoveTarget(null); setRemoveError(null) }}
                   disabled={removing}
                   className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >

@@ -4,8 +4,10 @@ import { FileText, Code2, ImageIcon, Paperclip, ChevronLeft, ChevronRight, Check
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { useNotifications } from '../../context/NotificationContext'
-import { getSubmissionDetail, reviewSubmission, type SubmissionDetail, type ContentBlock } from '../../services/submissionService'
-import { getProblemDetail, mapProblemType, type Problem } from '../../services/problemService'
+import { getSubmissionDetail, reviewSubmission } from '../../services/submissionService'
+import { getProblemDetail, mapProblemType } from '../../services/problemService'
+import type { SubmissionDetail, ContentBlock } from '../../types/submission'
+import type { Problem } from '../../types/problem'
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (

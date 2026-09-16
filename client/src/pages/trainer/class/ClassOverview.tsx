@@ -4,7 +4,8 @@ import { Users, BookOpen, Clock, CheckCircle, Loader2 } from 'lucide-react'
 import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { StatCard } from '../../../components/ui/StatCard'
 import { useClassDetail } from '../../../hooks/useClassDetail'
-import { getSubmissions, type SubmissionListItem } from '../../../services/submissionService'
+import { getSubmissions } from '../../../services/submissionService'
+import type { SubmissionListItem } from '../../../types/submission'
 
 export function ClassOverview() {
   const { classId = '' } = useParams()

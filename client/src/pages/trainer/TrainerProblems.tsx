@@ -4,11 +4,9 @@ import { Search, Plus, X, ChevronLeft, Pencil, Trash2, ExternalLink, Paperclip, 
 import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ProblemComposer } from '../../components/problem/ProblemComposer'
-import type { ProblemType, Difficulty, ProblemDraft } from '../../components/problem/ProblemComposer'
+import type { ProblemType, Difficulty, ProblemDraft, Problem } from '../../types/problem'
 import { useProblems } from '../../hooks/useProblems'
-import { getProblemDetail, createProblem, updateProblem, deleteProblem, type Problem } from '../../services/problemService'
-
-export type { Problem }
+import { getProblemDetail, createProblem, updateProblem, deleteProblem } from '../../services/problemService'
 
 const difficultyVariant: Record<Difficulty, string> = {
   easy: 'easy',

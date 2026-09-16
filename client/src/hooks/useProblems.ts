@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listProblems, type Problem } from '../services/problemService'
+import { listProblems } from '../services/problemService'
+import type { Problem } from '../types/problem'
 
 export function useProblems() {
   const [problems, setProblems] = useState<Problem[]>([])

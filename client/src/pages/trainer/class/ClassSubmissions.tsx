@@ -5,7 +5,8 @@ import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { Badge } from '../../../components/ui/Badge'
 import { useClassDetail } from '../../../hooks/useClassDetail'
 import { mapProblemType } from '../../../services/problemService'
-import { getSubmissions, type SubmissionListItem } from '../../../services/submissionService'
+import { getSubmissions } from '../../../services/submissionService'
+import type { SubmissionListItem } from '../../../types/submission'
 
 type ProblemType = 'DSA' | 'OS' | 'Database' | 'Other'
 
