@@ -47,10 +47,10 @@ export function RegisterPage({ forcedRole }: { forcedRole?: Role }) {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re in!</h1>
           <p className="text-gray-500 mb-6">Your {role} account has been created and you joined the class.</p>
           <button
-            onClick={() => navigate(`/${role}/dashboard`)}
+            onClick={() => navigate('/login')}
             className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-xl transition-colors"
           >
-            Go to Dashboard
+            Continue to Login
           </button>
         </div>
       </div>

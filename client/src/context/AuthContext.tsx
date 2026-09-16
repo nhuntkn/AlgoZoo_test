@@ -46,7 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
+        let res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
+
+        if (res.status === 401) {
+          const refreshResponse = await fetch(`${API_URL}/api/auth/refresh-token`, {
+            credentials: 'include',
+          })
+
+          if (refreshResponse.ok) {
+            res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
+          }
+        }
+
         if (!res.ok) return
 
         const data = await res.json()

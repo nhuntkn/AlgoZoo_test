@@ -14,11 +14,9 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const user = await login(email, password)
+      await login(email, password)
 
-      if (user.role === 'admin') navigate('/admin/dashboard')
-      else if (user.role === 'trainer') navigate('/trainer/dashboard')
-      else navigate('/student/dashboard')
+      navigate('/dashboard')
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Login failed')
     } finally {
