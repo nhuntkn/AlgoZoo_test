@@ -23,10 +23,6 @@ type ClassProblem = {
 const problems: ClassProblem[] = [
   { id: 1, title: 'Two Sum', type: 'DSA', deadline: 'Sep 20, 2026', status: 'reviewed', isPastDeadline: false },
   { id: 2, title: 'Binary Search', type: 'DSA', deadline: 'Sep 22, 2026', status: 'pending', isPastDeadline: false },
-  { id: 3, title: 'Reverse Linked List', type: 'DSA', deadline: 'Sep 25, 2026', status: 'not-started', isPastDeadline: false },
-  { id: 4, title: 'Process Scheduling', type: 'OS', deadline: 'Sep 18, 2026', status: 'not-started', isPastDeadline: true },
-  { id: 5, title: 'Memory Management', type: 'OS', deadline: 'Sep 28, 2026', status: 'not-started', isPastDeadline: false },
-  { id: 6, title: 'SQL Queries', type: 'Database', deadline: 'Oct 1, 2026', status: 'not-started', isPastDeadline: false },
 ]
 
 const typeOrder: ProblemType[] = ['DSA', 'OS', 'Database', 'Other']

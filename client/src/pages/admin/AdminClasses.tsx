@@ -19,9 +19,6 @@ type ClassItem = {
 
 const initialClasses: ClassItem[] = [
   { id: 1, name: 'WeCamp Batch 15', trainers: ['Nguyen Van Hung'], students: 24, problems: 35, status: 'active', progress: 62 },
-  { id: 2, name: 'StarCamp Batch 2', trainers: ['Tran Thi Mai'], students: 18, problems: 28, status: 'active', progress: 45 },
-  { id: 3, name: 'WeCamp Batch 14', trainers: ['Le Van An'], students: 22, problems: 30, status: 'active', progress: 88 },
-  { id: 4, name: 'StarCamp Batch 1', trainers: ['Pham Thi Huong'], students: 20, problems: 25, status: 'disabled', progress: 100 },
 ]
 
 const emptyForm = { name: '', description: '' }
@@ -40,7 +37,6 @@ export function AdminClasses() {
 
   const openCreate = () => {
     setForm(emptyForm)
-    setEditing(null)
     setDone(false)
     setModal('create')
   }

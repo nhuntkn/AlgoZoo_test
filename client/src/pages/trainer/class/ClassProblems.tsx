@@ -26,21 +26,12 @@ type AssignedProblem = {
 
 const initialAssignedProblems: AssignedProblem[] = [
   { id: 1, title: 'Two Sum', type: 'DSA', deadline: 'Sep 20', submitted: 18, total: 25 },
-  { id: 2, title: 'Binary Search', type: 'DSA', deadline: 'Sep 22', submitted: 10, total: 25 },
-  { id: 3, title: 'Reverse Linked List', type: 'DSA', deadline: 'Sep 25', submitted: 6, total: 25 },
-  { id: 4, title: 'Process Scheduling', type: 'OS', deadline: 'Sep 18', submitted: 20, total: 25 },
-  { id: 5, title: 'Memory Management', type: 'OS', deadline: 'Sep 28', submitted: 3, total: 25 },
 ]
 
 type BankProblem = { id: number; title: string; type: ProblemType; description: string; resource_url: string }
 
 const bankProblems: BankProblem[] = [
   { id: 10, title: 'Valid Anagram', type: 'DSA', description: 'Given two strings s and t, return true if t is an anagram of s, and false otherwise.', resource_url: 'https://leetcode.com/problems/valid-anagram/' },
-  { id: 11, title: 'Merge Sort', type: 'DSA', description: 'Implement the merge sort algorithm to sort an array of integers in ascending order.', resource_url: '' },
-  { id: 12, title: 'Course Schedule', type: 'DSA', description: 'There are numCourses courses you have to take. Determine if you can finish all courses given prerequisites.', resource_url: 'https://leetcode.com/problems/course-schedule/' },
-  { id: 13, title: 'SQL Queries', type: 'Database', description: 'Write SQL queries to solve common database problems using SELECT, JOIN, and aggregation functions.', resource_url: '' },
-  { id: 14, title: 'Joins & Aggregations', type: 'Database', description: 'Practice complex JOIN operations and aggregation functions in SQL to analyze relational data.', resource_url: '' },
-  { id: 15, title: 'Deadlock Detection', type: 'OS', description: "Implement the Banker's algorithm for deadlock avoidance in operating systems.", resource_url: '' },
 ]
 
 type Selected = { problem: BankProblem; deadline: string }

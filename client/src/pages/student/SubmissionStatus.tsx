@@ -62,41 +62,6 @@ const submissionsMap: Record<string, SubmissionData> = {
       text: 'Great use of hash map for O(n) solution! The code is clean and readable. Consider adding a comment about the time/space complexity trade-off. Well done!',
     },
   },
-  '2': {
-    id: 2,
-    problem: 'Binary Search',
-    problemType: 'DSA',
-    problemDescription:
-      'Given an array of integers nums which is sorted in ascending order, and an integer target, write a function to search target in nums. If target exists, return its index. Otherwise, return -1.',
-    problemConstraints: [
-      '1 ≤ nums.length ≤ 10⁴',
-      '-10⁴ < nums[i], target < 10⁴',
-      'All integers in nums are unique',
-      'nums is sorted in ascending order',
-    ],
-    problemExamples: [
-      { input: 'nums = [-1,0,3,5,9,12], target = 9', output: '4' },
-      { input: 'nums = [-1,0,3,5,9,12], target = 2', output: '-1' },
-    ],
-    problemResourceUrl: 'https://leetcode.com/problems/binary-search/',
-    class: 'WeCamp Batch 22',
-    submittedAt: 'Sep 14, 2026 at 2:15 PM',
-    status: 'PENDING',
-    explanation:
-      'I implemented binary search using left/right pointers, narrowing the range until the target is found or the range is empty.',
-    code: `def binary_search(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1`,
-    language: 'Python',
-  },
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {

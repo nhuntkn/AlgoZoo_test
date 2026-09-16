@@ -25,53 +25,8 @@ export const problemBank: Problem[] = [
     resources: [{ id: 1, label: 'LeetCode', url: 'https://leetcode.com/problems/two-sum/' }],
   },
   {
-    id: 2, title: 'Binary Search', type: 'DSA', difficulty: 'easy', topic: 'DSA', resource_url: 'https://leetcode.com/problems/binary-search/',
-    description: 'Given an array of integers nums which is sorted in ascending order, and an integer target, write a function to search target in nums. If target exists, return its index. Otherwise, return -1.\n\nExample:\nInput: nums = [-1,0,3,5,9,12], target = 9\nOutput: 4\n\nConstraints:\n• 1 ≤ nums.length ≤ 10⁴\n• All integers in nums are unique',
-    resources: [{ id: 2, label: 'LeetCode', url: 'https://leetcode.com/problems/binary-search/' }],
-  },
-  {
-    id: 3, title: 'Reverse Linked List', type: 'DSA', difficulty: 'easy', topic: 'DSA', resource_url: 'https://leetcode.com/problems/reverse-linked-list/',
-    description: 'Given the head of a singly linked list, reverse the list and return the reversed list.\n\nExample:\nInput: head = [1,2,3,4,5]\nOutput: [5,4,3,2,1]',
-    resources: [{ id: 3, label: 'LeetCode', url: 'https://leetcode.com/problems/reverse-linked-list/' }],
-  },
-  {
-    id: 4, title: 'Binary Tree Level Order Traversal', type: 'DSA', difficulty: 'medium', topic: 'DSA', resource_url: 'https://leetcode.com/problems/binary-tree-level-order-traversal/',
-    description: "Given the root of a binary tree, return the level order traversal of its nodes' values (from left to right, level by level).\n\nExample:\nInput: root = [3,9,20,null,null,15,7]\nOutput: [[3],[9,20],[15,7]]",
-    resources: [{ id: 4, label: 'LeetCode', url: 'https://leetcode.com/problems/binary-tree-level-order-traversal/' }],
-  },
-  {
-    id: 5, title: 'Course Schedule', type: 'DSA', difficulty: 'medium', topic: 'DSA', resource_url: 'https://leetcode.com/problems/course-schedule/',
-    description: 'There are numCourses courses labeled from 0 to numCourses - 1. Given an array prerequisites where prerequisites[i] = [ai, bi] means you must take bi first before ai.\n\nReturn true if you can finish all courses. Otherwise, return false.',
-    resources: [{ id: 5, label: 'LeetCode', url: 'https://leetcode.com/problems/course-schedule/' }],
-  },
-  {
     id: 6, title: 'Process Scheduling', type: 'OS', difficulty: 'medium', topic: 'OS', resource_url: '',
-    description: 'Implement and compare the following CPU scheduling algorithms:\n\n1. First-Come, First-Served (FCFS)\n2. Shortest Job First (SJF) — Non-preemptive\n3. Round Robin (RR) with configurable time quantum\n\nFor each algorithm, calculate:\n• Average waiting time\n• Average turnaround time\n• CPU utilization\n\nDiscuss the trade-offs in terms of fairness, throughput, and response time.',
-    resources: [],
-  },
-  {
-    id: 7, title: 'Memory Management', type: 'OS', difficulty: 'medium', topic: 'OS', resource_url: '',
-    description: "Explain the difference between paging and segmentation in OS memory management.\n\nIn your answer:\n• Define each technique and how it works\n• Compare address translation mechanisms\n• Discuss fragmentation issues (internal vs external)\n• Explain when you'd prefer one over the other\n\nBonus: What is a TLB and how does it improve paging performance?",
-    resources: [],
-  },
-  {
-    id: 8, title: 'Deadlock Detection', type: 'OS', difficulty: 'hard', topic: 'OS', resource_url: '',
-    description: "Implement the Banker's Algorithm for deadlock avoidance.\n\nGiven:\n• Number of processes and resource types\n• Maximum resource claim per process\n• Currently allocated resources\n• Available resources\n\nYour implementation should:\n1. Determine if the current state is safe\n2. Find a safe execution sequence if one exists\n3. Decide whether to grant a resource request",
-    resources: [],
-  },
-  {
-    id: 9, title: 'SQL Queries', type: 'Database', difficulty: 'easy', topic: 'Database', resource_url: '',
-    description: 'Given the schema:\nEmployees(id, name, department_id, salary, hire_date)\nDepartments(id, name, manager_id)\n\nWrite SQL queries to:\n1. Find employees earning above the average salary in their department\n2. List departments with more than 5 employees, sorted by headcount\n3. Find the top 3 highest-paid employees per department\n4. Find employees hired in the last 6 months with no manager in their department',
-    resources: [],
-  },
-  {
-    id: 10, title: 'Joins & Aggregations', type: 'Database', difficulty: 'medium', topic: 'Database', resource_url: '',
-    description: 'Given the tables:\nOrders(order_id, customer_id, product_id, quantity, order_date)\nCustomers(customer_id, name, country, email)\nProducts(product_id, name, price, category)\n\nTasks:\n1. Find customers who have never placed an order\n2. Calculate monthly revenue per product category for 2026\n3. Find the customer who spent the most in each country\n4. List products that appear in more than 50% of all orders',
-    resources: [],
-  },
-  {
-    id: 11, title: 'Database Normalization', type: 'Database', difficulty: 'medium', topic: 'Database', resource_url: '',
-    description: 'Given the unnormalized relation:\nStudentCourse(student_id, student_name, student_email, course_id, course_name, instructor_id, instructor_name, grade, semester)\n\nTasks:\n1. Identify all functional dependencies\n2. Normalize to 1NF, then 2NF, then 3NF\n3. Show resulting tables with primary/foreign keys\n4. Explain what anomalies are eliminated at each step',
+    description: 'Implement and compare FCFS, SJF, and Round Robin scheduling algorithms. For each, calculate average waiting time, turnaround time, and CPU utilization.',
     resources: [],
   },
 ]

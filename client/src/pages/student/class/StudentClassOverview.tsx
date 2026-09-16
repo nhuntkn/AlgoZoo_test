@@ -17,9 +17,6 @@ const classData: Record<string, { name: string; description: string; status: 'AC
 
 const activity = [
   { id: 1, label: 'Two Sum', status: 'Reviewed', icon: '✓', color: 'text-green-600' },
-  { id: 2, label: 'Binary Search', status: 'Pending review', icon: '◷', color: 'text-yellow-600' },
-  { id: 3, label: 'Reverse Linked List', status: 'Not started', icon: '○', color: 'text-gray-400' },
-  { id: 4, label: 'Process Scheduling', status: 'Not started', icon: '○', color: 'text-gray-400' },
 ]
 
 export function StudentClassOverview() {

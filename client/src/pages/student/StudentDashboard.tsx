@@ -5,19 +5,16 @@ import { Badge } from '../../components/ui/Badge'
 import { useAuth } from '../../context/AuthContext'
 
 const deadlines = [
-  { id: 2, classId: '2', problem: 'Binary Search',      class: 'Batch 22', deadline: 'Sep 22, 2026', daysLeft: 10 },
-  { id: 4, classId: '2', problem: 'Process Scheduling', class: 'Batch 22', deadline: 'Sep 18, 2026', daysLeft: 6  },
-  { id: 6, classId: '2', problem: 'SQL Queries',        class: 'Batch 22', deadline: 'Sep 15, 2026', daysLeft: 2  },
+  { id: 2, classId: '2', problem: 'Binary Search', class: 'Batch 22', deadline: 'Sep 22, 2026', daysLeft: 6 },
 ]
 
 const recentSubmissions = [
-  { id: 1, problem: 'Two Sum',       class: 'Batch 22', status: 'REVIEWED' as const, submittedAt: 'Sep 10' },
-  { id: 2, problem: 'Binary Search', class: 'Batch 22', status: 'PENDING'  as const, submittedAt: 'Sep 14' },
+  { id: 1, problem: 'Two Sum', class: 'Batch 22', status: 'REVIEWED' as const, submittedAt: 'Sep 10' },
 ]
 
-const totalProblems = 6
+const totalProblems = 2
 const reviewed      = 1
-const pendingReview = 2
+const pendingReview = 1
 
 export function StudentDashboard() {
   const { user } = useAuth()

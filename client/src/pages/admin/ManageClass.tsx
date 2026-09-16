@@ -15,14 +15,10 @@ const classData = {
 
 const initialStudents = [
   { id: 1, name: 'Alice Nguyen', username: 'alice123' },
-  { id: 2, name: 'Bob Tran', username: 'bob_t' },
-  { id: 3, name: 'Sarah Lee', username: 'sarah_lee' },
-  { id: 4, name: 'Minh Pham', username: 'minh_p' },
 ]
 
 const initialTrainers = [
   { id: 1, name: 'Alex Nguyen', username: 'alexn' },
-  { id: 2, name: 'Sarah Tran', username: 'sarah_tran' },
 ]
 
 export function ManageClass() {

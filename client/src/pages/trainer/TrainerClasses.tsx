@@ -15,7 +15,6 @@ type ClassItem = {
 
 const classes: ClassItem[] = [
   { id: 1, name: 'WeCamp Batch 21', description: 'NAB WeCamp Batch 21 — DSA Training', students: 25, submitted: 18, total: 25, status: 'ACTIVE' },
-  { id: 2, name: 'WeCamp Batch 22', description: 'NAB WeCamp Batch 22 — DSA Training', students: 23, submitted: 10, total: 23, status: 'ACTIVE' },
 ]
 
 export function TrainerClasses() {

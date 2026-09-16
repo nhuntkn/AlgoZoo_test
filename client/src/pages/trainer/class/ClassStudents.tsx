@@ -21,11 +21,6 @@ type Student = {
 
 const initialStudents: Student[] = [
   { id: 1, name: 'Alice Nguyen', initials: 'AN', email: 'alice@gmail.com', joinedAt: 'Sep 1', completed: 6, total: 8 },
-  { id: 2, name: 'Bob Tran', initials: 'BT', email: 'bob@gmail.com', joinedAt: 'Sep 1', completed: 4, total: 8 },
-  { id: 3, name: 'Carol Lee', initials: 'CL', email: 'carol@gmail.com', joinedAt: 'Sep 2', completed: 7, total: 8 },
-  { id: 4, name: 'Minh Pham', initials: 'MP', email: 'minh@gmail.com', joinedAt: 'Sep 2', completed: 3, total: 8 },
-  { id: 5, name: 'Ha Le', initials: 'HL', email: 'hale@gmail.com', joinedAt: 'Sep 3', completed: 5, total: 8 },
-  { id: 6, name: 'An Tran', initials: 'AT', email: 'an@gmail.com', joinedAt: 'Sep 4', completed: 2, total: 8 },
 ]
 
 export function ClassStudents() {

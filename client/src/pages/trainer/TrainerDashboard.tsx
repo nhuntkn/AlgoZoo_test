@@ -21,23 +21,8 @@ type QueueItem = {
 
 const allItems: QueueItem[] = [
   { id: 1, student: 'Alice Nguyen', initials: 'AN', problem: 'Two Sum', subject: 'DSA', class: 'Batch 21', status: 'pending', date: 'Sep 10' },
-  { id: 2, student: 'Bob Tran', initials: 'BT', problem: 'Binary Search', subject: 'DSA', class: 'Batch 21', status: 'pending', date: 'Sep 9' },
-  { id: 3, student: 'Carol Lee', initials: 'CL', problem: 'SQL Query', subject: 'Database', class: 'Batch 22', status: 'pending', date: 'Sep 11' },
-  { id: 4, student: 'Ha Pham', initials: 'HP', problem: 'Process Scheduling', subject: 'OS', class: 'Batch 21', status: 'pending', date: 'Sep 8' },
-  { id: 5, student: 'Minh Le', initials: 'ML', problem: 'DFS', subject: 'DSA', class: 'Batch 22', status: 'pending', date: 'Sep 12' },
-  { id: 6, student: 'Lan Pham', initials: 'LP', problem: 'Graph BFS', subject: 'DSA', class: 'Batch 21', status: 'pending', date: 'Sep 7' },
-  { id: 7, student: 'Nam Tran', initials: 'NT', problem: 'SQL Join', subject: 'Database', class: 'Batch 22', status: 'pending', date: 'Sep 6' },
-  { id: 8, student: 'Hoa Le', initials: 'HL', problem: 'Memory Management', subject: 'OS', class: 'Batch 22', status: 'pending', date: 'Sep 13' },
-  { id: 9, student: 'Tuan Nguyen', initials: 'TN', problem: 'Two Sum', subject: 'DSA', class: 'Batch 21', status: 'reviewed', date: 'Sep 8' },
-  { id: 10, student: 'Mai Tran', initials: 'MT', problem: 'Linked List', subject: 'DSA', class: 'Batch 22', status: 'reviewed', date: 'Sep 7' },
-  { id: 11, student: 'Long Le', initials: 'LL', problem: 'SQL Aggregation', subject: 'Database', class: 'Batch 21', status: 'reviewed', date: 'Sep 9' },
-  { id: 12, student: 'Bao Pham', initials: 'BP', problem: 'Thread Sync', subject: 'OS', class: 'Batch 22', status: 'reviewed', date: 'Sep 10' },
-  { id: 13, student: 'Kim Nguyen', initials: 'KN', problem: 'Merge Sort', subject: 'DSA', class: 'Batch 21', status: 'reviewed', date: 'Sep 9' },
-  { id: 14, student: 'Duc Tran', initials: 'DT', problem: 'SQL Index', subject: 'Database', class: 'Batch 22', status: 'reviewed', date: 'Sep 8' },
-  { id: 15, student: 'An Nguyen', initials: 'AQ', problem: 'Two Sum', subject: 'DSA', class: 'Batch 22', status: 'late', date: 'Sep 9' },
-  { id: 16, student: 'Phu Tran', initials: 'PT', problem: 'Deadlock', subject: 'OS', class: 'Batch 21', status: 'late', date: 'Sep 8' },
-  { id: 17, student: 'Thu Le', initials: 'TL', problem: 'SQL Index', subject: 'Database', class: 'Batch 22', status: 'late', date: 'Sep 7' },
-  { id: 18, student: 'Viet Pham', initials: 'VP', problem: 'Binary Search', subject: 'DSA', class: 'Batch 21', status: 'late', date: 'Sep 11' },
+  { id: 2, student: 'Bob Tran', initials: 'BT', problem: 'Binary Search', subject: 'DSA', class: 'Batch 21', status: 'reviewed', date: 'Sep 8' },
+  { id: 3, student: 'Carol Lee', initials: 'CL', problem: 'Process Scheduling', subject: 'OS', class: 'Batch 21', status: 'late', date: 'Sep 7' },
 ]
 
 // ─── Constants ────────────────────────────────────────────────────────────────

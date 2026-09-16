@@ -10,10 +10,6 @@ const classData: Record<string, { name: string; description: string; status: 'AC
 
 const activity = [
   { id: 1, text: 'Alice Nguyen submitted Two Sum', time: '2h ago' },
-  { id: 2, text: "Bob Tran's Binary Search was reviewed", time: '5h ago' },
-  { id: 3, text: 'Carol Lee submitted Process Scheduling', time: '1d ago' },
-  { id: 4, text: 'Minh Pham joined the class', time: '1d ago' },
-  { id: 5, text: 'Two Sum deadline extended to Sep 25', time: '2d ago' },
 ]
 
 export function ClassOverview() {

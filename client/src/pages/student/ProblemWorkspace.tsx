@@ -34,30 +34,6 @@ const problemData: Record<string, {
     resource_url: 'https://leetcode.com/problems/binary-search/',
     status: 'pending', isPastDeadline: false,
   },
-  '3': {
-    title: 'Reverse Linked List', type: 'DSA', difficulty: 'Easy', deadline: 'September 25, 2026',
-    description: 'Given the head of a singly linked list, reverse the list, and return the reversed list.',
-    constraints: ['The number of nodes in the list is the range [0, 5000]', '-5000 ≤ Node.val ≤ 5000'],
-    examples: [{ input: 'head = [1,2,3,4,5]', output: '[5,4,3,2,1]' }],
-    resource_url: 'https://leetcode.com/problems/reverse-linked-list/',
-    status: 'not-started', isPastDeadline: false,
-  },
-  '4': {
-    title: 'Process Scheduling', type: 'OS', difficulty: 'Medium', deadline: 'September 18, 2026',
-    description: 'Implement and compare FCFS, SJF, and Round Robin scheduling algorithms.',
-    constraints: ['Support at least FCFS and Round Robin', 'Calculate average metrics'],
-    examples: [], resource_url: '', status: 'not-started', isPastDeadline: true,
-  },
-  '5': {
-    title: 'Memory Management', type: 'OS', difficulty: 'Medium', deadline: 'September 28, 2026',
-    description: 'Understand paging and segmentation concepts in OS memory management.',
-    constraints: [], examples: [], resource_url: '', status: 'not-started', isPastDeadline: false,
-  },
-  '6': {
-    title: 'SQL Queries', type: 'Database', difficulty: 'Easy', deadline: 'October 1, 2026',
-    description: 'Write SQL queries to solve common database problems using SELECT, JOIN, and aggregation functions.',
-    constraints: ['Use standard SQL', 'Optimize for readability'], examples: [], resource_url: '', status: 'not-started', isPastDeadline: false,
-  },
 }
 
 const difficultyClass: Record<string, string> = {

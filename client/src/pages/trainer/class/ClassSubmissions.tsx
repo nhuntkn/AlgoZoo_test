@@ -26,10 +26,6 @@ type Submission = {
 const submissions: Submission[] = [
   { id: 1, student: 'Alice Nguyen', initials: 'AN', problem: 'Two Sum', topic: 'DSA', submittedAt: 'Sep 10', sortTs: 10, status: 'PENDING', isLate: false },
   { id: 2, student: 'Bob Tran', initials: 'BT', problem: 'Binary Search', topic: 'DSA', submittedAt: 'Sep 9', sortTs: 9, status: 'REVIEWED', isLate: false },
-  { id: 3, student: 'Carol Lee', initials: 'CL', problem: 'Two Sum', topic: 'DSA', submittedAt: 'Sep 11', sortTs: 11, status: 'PENDING', isLate: true },
-  { id: 4, student: 'Minh Pham', initials: 'MP', problem: 'Binary Search', topic: 'DSA', submittedAt: 'Sep 12', sortTs: 12, status: 'REVIEWED', isLate: false },
-  { id: 5, student: 'Ha Le', initials: 'HL', problem: 'Process Scheduling', topic: 'OS', submittedAt: 'Sep 8', sortTs: 8, status: 'PENDING', isLate: false },
-  { id: 6, student: 'An Tran', initials: 'AT', problem: 'Memory Management', topic: 'OS', submittedAt: 'Sep 7', sortTs: 7, status: 'REVIEWED', isLate: true },
 ]
 
 export function ClassSubmissions() {
