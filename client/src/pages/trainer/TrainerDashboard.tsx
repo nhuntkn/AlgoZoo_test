@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, X, RotateCcw, ArrowRight, Clock, CheckCircle } from 'lucide-react'
+import { ChevronDown, X, RotateCcw, ArrowRight, Clock, CheckCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { getSubmissions, type SubmissionListItem } from '../../services/submissionService'
+import { getTrainerClasses } from '../../services/classroomService'
+import { mapProblemType } from '../../services/problemService'
 
-type Subject = 'DSA' | 'Database' | 'OS'
+type Subject = 'DSA' | 'Database' | 'OS' | 'Other'
 type SubmissionStatus = 'pending' | 'reviewed' | 'late'
 type QueueTab = 'pending' | 'reviewed' | 'late'
-// ─── Queue data ───────────────────────────────────────────────────────────────
 
 type QueueItem = {
-  id: number
+  id: string
   student: string
   initials: string
   problem: string
@@ -19,21 +21,32 @@ type QueueItem = {
   date: string
 }
 
-const allItems: QueueItem[] = [
-  { id: 1, student: 'Alice Nguyen', initials: 'AN', problem: 'Two Sum', subject: 'DSA', class: 'Batch 21', status: 'pending', date: 'Sep 10' },
-  { id: 2, student: 'Bob Tran', initials: 'BT', problem: 'Binary Search', subject: 'DSA', class: 'Batch 21', status: 'reviewed', date: 'Sep 8' },
-  { id: 3, student: 'Carol Lee', initials: 'CL', problem: 'Process Scheduling', subject: 'OS', class: 'Batch 21', status: 'late', date: 'Sep 7' },
-]
+function initials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+}
+
+function toQueueItem(s: SubmissionListItem): QueueItem {
+  return {
+    id: s.submission_id,
+    student: s.student?.name ?? 'Unknown',
+    initials: s.student ? initials(s.student.name) : '?',
+    problem: s.problem?.title ?? 'Unknown problem',
+    subject: mapProblemType(s.problem?.problemType),
+    class: s.class?.className ?? 'Unknown class',
+    status: s.status === 'review' ? 'reviewed' : s.status === 'late' ? 'late' : 'pending',
+    date: new Date(s.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  }
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CLASSES = ['All Classes', 'Batch 21', 'Batch 22']
-const SUBJECTS: Subject[] = ['DSA', 'Database', 'OS']
+const SUBJECTS: Subject[] = ['DSA', 'Database', 'OS', 'Other']
 
 const subjectStyle: Record<Subject, { bar: string; text: string }> = {
   DSA: { bar: 'bg-orange-400', text: 'text-orange-600' },
   Database: { bar: 'bg-green-500', text: 'text-green-700' },
   OS: { bar: 'bg-purple-500', text: 'text-purple-700' },
+  Other: { bar: 'bg-gray-400', text: 'text-gray-600' },
 }
 
 const statusBadgeClass: Record<SubmissionStatus, string> = {
@@ -87,11 +100,28 @@ export function TrainerDashboard() {
   const { user } = useAuth()
   const firstName = user?.name.split(' ')[0] ?? 'there'
 
+  const [items, setItems] = useState<QueueItem[]>([])
+  const [classNames, setClassNames] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    Promise.all([getSubmissions(), getTrainerClasses()])
+      .then(([subs, classes]) => {
+        setItems(subs.map(toQueueItem))
+        setClassNames(classes.map((c) => c.className))
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load dashboard'))
+      .finally(() => setLoading(false))
+  }, [])
+
   const [classFilter, setClassFilter] = useState('All Classes')
   const [subjectFilter, setSubjectFilter] = useState<Subject | 'all'>('all')
   const [activeTab, setActiveTab] = useState<QueueTab>('pending')
 
-  const filtered = allItems.filter((s) => {
+  const filtered = items.filter((s) => {
     if (classFilter !== 'All Classes' && s.class !== classFilter) return false
     if (subjectFilter !== 'all' && s.subject !== subjectFilter) return false
     return true
@@ -120,6 +150,10 @@ export function TrainerDashboard() {
         <p className="text-sm text-gray-400 mt-1">Here's what's happening in your classes.</p>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-5 text-sm text-red-600">{error}</div>
+      )}
+
       {/* Filter bar */}
       <div className="bg-white rounded-2xl shadow-sm px-5 py-3.5 mb-5 flex items-end gap-4 flex-wrap">
         {/* Class */}
@@ -131,7 +165,8 @@ export function TrainerDashboard() {
               onChange={(e) => setClassFilter(e.target.value)}
               className="appearance-none pl-3 pr-8 py-1.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/30 min-w-[130px]"
             >
-              {CLASSES.map((c) => <option key={c}>{c}</option>)}
+              <option>All Classes</option>
+              {classNames.map((c) => <option key={c}>{c}</option>)}
             </select>
             <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -177,13 +212,13 @@ export function TrainerDashboard() {
       <div className="grid grid-cols-2 gap-4 mb-5">
         <KpiCard
           label="Total Submissions"
-          value={total}
+          value={loading ? '—' : total}
           iconBg="bg-blue-100"
           icon={<CheckCircle size={18} className="text-blue-500" />}
         />
         <KpiCard
           label="Pending Review"
-          value={pending.length}
+          value={loading ? '—' : pending.length}
           iconBg="bg-orange-100"
           icon={<Clock size={18} className="text-orange-500" />}
           active={activeTab === 'pending'}
@@ -216,7 +251,11 @@ export function TrainerDashboard() {
 
               {/* Rows */}
               <div className="flex-1 min-h-[200px]">
-                {queueRows.length === 0 ? (
+                {loading ? (
+                  <div className="py-14 flex items-center justify-center text-sm text-gray-400 gap-2">
+                    <Loader2 size={16} className="animate-spin" /> Loading...
+                  </div>
+                ) : queueRows.length === 0 ? (
                   <div className="py-14 text-center text-sm text-gray-400">No submissions</div>
                 ) : (
                   queueRows.map((s, i) => (

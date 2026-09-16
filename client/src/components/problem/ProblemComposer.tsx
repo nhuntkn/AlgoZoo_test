@@ -6,8 +6,8 @@ import {
   Link2, ImageIcon, Code2, MoreHorizontal, Undo2, Redo2,
   Paperclip, ExternalLink, FileText,
 } from 'lucide-react'
-import { TypeBadge } from './Badge'
-import { Button } from './Button'
+import { TypeBadge } from '../ui/Badge'
+import { Button } from '../ui/Button'
 
 export type ProblemType = 'DSA' | 'OS' | 'Database' | 'Other'
 export type Difficulty = 'easy' | 'medium' | 'hard'

@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) return
 
         const data = await res.json()
-        if (data?.data) setUser(toUser(data.data))
+        if (data?.data?.user) setUser(toUser(data.data.user))
       } finally {
         setAuthLoading(false)
       }
