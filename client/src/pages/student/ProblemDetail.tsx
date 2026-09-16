@@ -3,14 +3,23 @@ import { ArrowLeft, ExternalLink, Code2 } from 'lucide-react'
 import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 
-const problem = {
+const problem: {
+  id: number
+  title: string
+  type: 'DSA' | 'OS' | 'Database' | 'Other'
+  description: string
+  resource_url: string
+  deadline: string
+  status: 'not-started' | 'pending' | 'reviewed'
+  isPastDeadline: boolean
+} = {
   id: 1,
   title: 'Two Sum',
   type: 'DSA' as const,
   description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.',
   resource_url: 'https://leetcode.com/problems/two-sum/',
   deadline: 'September 20, 2026',
-  status: 'not-started' as const,
+  status: 'not-started',
   isPastDeadline: false,
 }
 
@@ -90,9 +99,12 @@ export function ProblemDetail() {
             <div className="flex justify-between items-center">
               <span className="text-gray-500">Status</span>
               <span className={`text-sm font-medium capitalize ${
-                problem.status === 'not-started' ? 'text-gray-400' : 'text-gray-400'
+                problem.status === 'reviewed' ? 'text-green-600' :
+                problem.status === 'pending' ? 'text-yellow-600' :
+                'text-gray-400'
               }`}>
-                {problem.status === 'not-started' ? 'Not started' : 'Reviewed'}
+                {problem.status === 'not-started' ? 'Not started' :
+                 problem.status === 'pending' ? 'Pending review' : 'Reviewed'}
               </span>
             </div>
           </div>

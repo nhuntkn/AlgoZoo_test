@@ -1,18 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import { Search, X, Loader2 } from 'lucide-react'
 import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { Badge } from '../../../components/ui/Badge'
-
-const classNames: Record<string, string> = {
-  '1': 'WeCamp Batch 21',
-  '2': 'WeCamp Batch 22',
-}
+import { useClassDetail } from '../../../hooks/useClassDetail'
+import { mapProblemType } from '../../../services/problemService'
+import { getSubmissions } from '../../../services/submissionService'
+import type { SubmissionListItem } from '../../../types/submission'
 
 type ProblemType = 'DSA' | 'OS' | 'Database' | 'Other'
 
 type Submission = {
-  id: number
+  id: string
   student: string
   initials: string
   problem: string
@@ -23,19 +22,49 @@ type Submission = {
   isLate: boolean
 }
 
-const submissions: Submission[] = [
-  { id: 1, student: 'Alice Nguyen', initials: 'AN', problem: 'Two Sum', topic: 'DSA', submittedAt: 'Sep 10', sortTs: 10, status: 'PENDING', isLate: false },
-  { id: 2, student: 'Bob Tran', initials: 'BT', problem: 'Binary Search', topic: 'DSA', submittedAt: 'Sep 9', sortTs: 9, status: 'REVIEWED', isLate: false },
-  { id: 3, student: 'Carol Lee', initials: 'CL', problem: 'Two Sum', topic: 'DSA', submittedAt: 'Sep 11', sortTs: 11, status: 'PENDING', isLate: true },
-  { id: 4, student: 'Minh Pham', initials: 'MP', problem: 'Binary Search', topic: 'DSA', submittedAt: 'Sep 12', sortTs: 12, status: 'REVIEWED', isLate: false },
-  { id: 5, student: 'Ha Le', initials: 'HL', problem: 'Process Scheduling', topic: 'OS', submittedAt: 'Sep 8', sortTs: 8, status: 'PENDING', isLate: false },
-  { id: 6, student: 'An Tran', initials: 'AT', problem: 'Memory Management', topic: 'OS', submittedAt: 'Sep 7', sortTs: 7, status: 'REVIEWED', isLate: true },
-]
+function initials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+}
+
+function toSubmission(s: SubmissionListItem): Submission {
+  const submittedDate = new Date(s.submitted_at)
+  return {
+    id: s.submission_id,
+    student: s.student?.name ?? 'Unknown',
+    initials: s.student ? initials(s.student.name) : '?',
+    problem: s.problem?.title ?? 'Unknown problem',
+    topic: mapProblemType(s.problem?.problemType),
+    submittedAt: submittedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    sortTs: submittedDate.getTime(),
+    status: s.status === 'review' ? 'REVIEWED' : 'PENDING',
+    isLate: s.is_late,
+  }
+}
 
 export function ClassSubmissions() {
-  const { classId = '1' } = useParams()
+  const { classId = '' } = useParams()
+  const { classDetail } = useClassDetail(classId)
+  const className = classDetail?.className ?? '...'
   const [searchParams, setSearchParams] = useSearchParams()
-  const className = classNames[classId] ?? 'WeCamp Batch 21'
+
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!classId) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    getSubmissions()
+      .then((all) => {
+        if (cancelled) return
+        setSubmissions(all.filter((s) => s.class?.id === classId).map(toSubmission))
+      })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load submissions') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [classId])
 
   const [tab, setTab] = useState<'all' | 'pending' | 'reviewed' | 'late'>('all')
   const [search, setSearch] = useState('')
@@ -53,7 +82,7 @@ export function ClassSubmissions() {
   ]
 
   const filtered = [...submissions]
-    .sort((a, b) => a.sortTs - b.sortTs)
+    .sort((a, b) => b.sortTs - a.sortTs)
     .filter((s) => {
       const matchTab =
         tab === 'all' ? true :
@@ -81,6 +110,14 @@ export function ClassSubmissions() {
     ? `Topic: ${topicFilter}`
     : ''
 
+  if (loading) {
+    return (
+      <div className="py-16 flex items-center justify-center text-sm text-gray-400 gap-2">
+        <Loader2 size={16} className="animate-spin" /> Loading submissions...
+      </div>
+    )
+  }
+
   return (
     <div>
       <ClassTabNav
@@ -92,6 +129,10 @@ export function ClassSubmissions() {
         title={className}
         tabs={tabs}
       />
+
+      {error && (
+        <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4 text-sm text-red-600">{error}</div>
+      )}
 
       {/* Active filter banner */}
       {activeFilterLabel && (

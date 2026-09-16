@@ -214,7 +214,7 @@ exports.register = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, inviteToken } = req.body;
         // validate email and password
         if (!email || !password) {
             return res.status(400).json({ 
@@ -222,7 +222,7 @@ exports.loginUser = async (req, res) => {
                 message: 'Email and password are required' });
         }
         // check if user exists
-        const user = await User.findOne({ email: email.trim() }).select('+password');
+        const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
         if (!user) {
         return res.status(404).json({ 
             status: 'error', 
@@ -242,13 +242,41 @@ exports.loginUser = async (req, res) => {
                 message: 'User password is incorrect' });
         }
 
+        // A login started from an invitation link also enrolls an existing account.
+        if (inviteToken) {
+            const classDoc = await Class.findOne({
+                trainerInviteToken: inviteToken,
+                trainerInviteTokenExpiresAt: { $gt: new Date() },
+                isActive: true,
+            });
+
+            if (!classDoc) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Invitation link is invalid, expired, or class is inactive',
+                });
+            }
+
+            if (user.role !== 'trainer') {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'This invitation is for trainer accounts only',
+                });
+            }
+
+            await ClassMember.updateOne(
+                { classId: classDoc._id, userId: user._id },
+                { $setOnInsert: { classId: classDoc._id, userId: user._id } },
+                { upsert: true }
+            );
+        }
+
         return loginResponse(res, user);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
     }
 };
-
 /** 
  * Controller for logout
  * POST /routes/auth/logout

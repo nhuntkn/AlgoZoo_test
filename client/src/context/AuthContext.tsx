@@ -6,7 +6,7 @@ import type { Role, User } from '../types/auth'
 interface AuthContextType {
   user: User | null
   authLoading: boolean
-  login: (email: string, password: string) => Promise<User>
+  login: (email: string, password: string, inviteToken?: string) => Promise<User>
   register: (token: string, fullname: string, email: string, password: string) => Promise<User>
   setRole: (role: Role) => void
   logout: () => Promise<void>
@@ -57,8 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void restoreSession()
   }, [])
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const data = await authService.login(email, password)
+  const login = async (email: string, password: string, inviteToken?: string): Promise<User> => {
+    const data = await authService.login(email, password, inviteToken)
 
     const loggedInUser = data?.result?.data ?? {}
     const nextUser = toUser(loggedInUser)
@@ -95,3 +95,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={{ user, authLoading, login, register, setRole, logout }}>{children}</AuthContext.Provider>
 }
 
+export function useAuth() {
+  const context = React.useContext(AuthContext)
+
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+
+  return context
+}

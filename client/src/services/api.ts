@@ -1,11 +1,7 @@
-export interface ApiPayload {
-  status?: string
-  message?: string
-  data?: Record<string, unknown>
-  result?: { status?: string; message?: string; data?: Record<string, unknown> }
-}
+// services/api.ts
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const configuredApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const API_BASE_URL = configuredApiUrl.endsWith('/api') ? configuredApiUrl : `${configuredApiUrl}/api`
 
 export class ApiError extends Error {
   readonly status: number
@@ -28,6 +24,29 @@ async function request<T>(
       'Content-Type': 'application/json',
       ...options.headers,
     },
+  })
+
+  const body = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      body?.result?.message ?? body?.message ?? 'Request failed',
+      response.status
+    )
+  }
+
+  return body
+}
+
+
+async function requestFormData<T>(
+  path: string,
+  formData: FormData
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
   })
 
   const body = await response.json().catch(() => null)
@@ -66,4 +85,7 @@ export const api = {
     request<T>(path, {
       method: 'DELETE',
     }),
+
+  postFormData: <T>(path: string, formData: FormData) =>
+    requestFormData<T>(path, formData),
 }

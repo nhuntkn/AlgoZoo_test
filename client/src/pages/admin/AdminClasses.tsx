@@ -1,22 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Pencil, X, CheckCircle2 } from 'lucide-react'
+import { Search, Plus, Pencil, Users, X, CheckCircle2 } from 'lucide-react'
 
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import * as adminService from '../../services/adminService'
 import { useAdminClasses } from '../../hooks/useAdminClasses'
 import type { AdminClass } from '../../types/admin'
+import type { AdminClassProgress } from '../../types/adminDashboard'
 
 const emptyForm = { name: '', description: '' }
+
+type ClassCardData = AdminClass & {
+  trainerCount: number
+  studentCount: number
+  problemCount: number
+  submissionCount: number
+  progressPercent: number
+}
 
 export function AdminClasses() {
   const { classes, isLoading, error: loadError, createClass } = useAdminClasses()
   const [search, setSearch] = useState('')
+  const [classStats, setClassStats] = useState<Record<string, ClassCardData>>({})
+  const [statsLoading, setStatsLoading] = useState(false)
 
   // Modal State
-  const [modal, setModal] = useState<'create' | 'edit' | null>(null)
-  const [editing, setEditing] = useState<AdminClass | null>(null)
+  const [modal, setModal] = useState<'create' | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [done, setDone] = useState(false)
   const [error, setLocalError] = useState('')
@@ -24,32 +34,50 @@ export function AdminClasses() {
 
   const displayError = error || loadError
 
+  useEffect(() => {
+    if (!classes.length) {
+      setClassStats({})
+      return
+    }
+
+    const loadClassStats = async () => {
+      setStatsLoading(true)
+      try {
+        const dashboard = (await adminService.getDashboard()).data
+        const progressByClass = new Map<string, AdminClassProgress>(dashboard.classProgress.map((item) => [item.class_id, item]))
+        const entries = await Promise.all(classes.map(async (classItem) => {
+          const progress = progressByClass.get(classItem.id)
+          try {
+            const detail = await adminService.getClassDetail(classItem.id)
+            return [classItem.id, { ...classItem, trainerCount: detail.trainers.length, studentCount: progress?.studentCount ?? detail.students.length, problemCount: progress?.problemCount ?? 0, submissionCount: progress?.submissionCount ?? 0, progressPercent: progress?.progressPercent ?? 0 }] as const
+          } catch {
+            return [classItem.id, { ...classItem, trainerCount: 0, studentCount: progress?.studentCount ?? 0, problemCount: progress?.problemCount ?? 0, submissionCount: progress?.submissionCount ?? 0, progressPercent: progress?.progressPercent ?? 0 }] as const
+          }
+        }))
+        setClassStats(Object.fromEntries(entries))
+      } catch {
+        setClassStats({})
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+
+    void loadClassStats()
+  }, [classes])
+
   const filtered = classes.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   )
 
   const openCreate = () => {
     setForm(emptyForm)
-    setEditing(null)
     setDone(false)
     setLocalError('')
     setModal('create')
   }
 
-  const openEdit = (c: AdminClass) => {
-    setEditing(c)
-    setForm({
-      name: c.name,
-      description: c.description || '',
-    })
-    setDone(false)
-    setLocalError('')
-    setModal('edit')
-  }
-
   const closeModal = () => {
     setModal(null)
-    setEditing(null)
     setDone(false)
     setLocalError('')
   }
@@ -66,21 +94,6 @@ export function AdminClasses() {
       setDone(true)
     } catch (requestError) {
       setLocalError(requestError instanceof Error ? requestError.message : 'Unable to create class')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleEdit = async () => {
-    if (!editing || !form.name.trim() || isSubmitting) return
-
-    setLocalError('')
-    setIsSubmitting(true)
-    try {
-      await adminService.updateClass(editing.id, form.name.trim(), form.description.trim())
-      setDone(true)
-    } catch (requestError) {
-      setLocalError(requestError instanceof Error ? requestError.message : 'Unable to update class')
     } finally {
       setIsSubmitting(false)
     }
@@ -111,49 +124,48 @@ export function AdminClasses() {
 
       {/* Cards */}
       {displayError && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{displayError}</p>}
-      {isLoading && <p className="text-sm text-gray-500">Loading classes...</p>}
+      {(isLoading || statsLoading) && <p className="text-sm text-gray-500">Loading classes...</p>}
       {!isLoading && !displayError && filtered.length === 0 && <p className="text-sm text-gray-500">No classes found.</p>}
-      <div className="grid grid-cols-2 gap-4">
-        {filtered.map((c) => (
-          <div key={c.id} className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-3 h-3 rounded-sm bg-accent" />
-                  <h3 className="font-bold text-gray-900">{c.name}</h3>
-                  <Badge variant={c.isActive ? 'active' : 'disabled'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {filtered.map((c) => {
+          const stats = classStats[c.id]
+          const progress = stats?.progressPercent ?? 0
+
+          return (
+            <div key={c.id} className="bg-white rounded-2xl shadow-sm p-5 min-w-0">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2.5 h-2.5 rounded-sm bg-accent flex-shrink-0" />
+                    <h3 className="font-bold text-gray-900 truncate">{c.name}</h3>
+                    <Badge variant={c.isActive ? 'active' : 'disabled'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
+                  </div>
+                  {c.description && <p className="text-xs text-gray-400 truncate">{c.description}</p>}
                 </div>
-                {c.description && <p className="text-sm text-gray-400">{c.description}</p>}
+                <Link to={`/admin/classes/${c.id}/manage`} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Manage class"><Pencil size={14} /></Link>
               </div>
 
-              <div className="flex items-center gap-1">
-                {/* Router Link for Manage Route */}
-                <Link
-                  to={`/admin/classes/${c.id}/manage`}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-                  title="Manage Class"
-                >
-                  <Pencil size={14} />
-                </Link>
-                <button
-                  onClick={() => openEdit(c)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"
-                  title="Edit Class"
-                >
-                  <Pencil size={14} />
-                </button>
+              <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                <span className="flex items-center gap-1"><Users size={13} className="text-gray-400" />{stats?.studentCount ?? 0} students</span>
+                <span>{stats?.problemCount ?? 0} problems</span>
+                <span>Trainers: {stats?.trainerCount ?? 0}</span>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5"><span className="text-xs text-gray-400">Progress</span><span className="text-xs font-semibold text-gray-700">{progress}%</span></div>
+                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} /></div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* ── Create / Edit modal ── */}
-      {(modal === 'create' || modal === 'edit') && (
+      {modal === 'create' && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-[480px]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900">{modal === 'create' ? 'Create New Class' : 'Edit Class'}</h3>
+              <h3 className="font-bold text-gray-900">Create New Class</h3>
               <button onClick={closeModal}><X size={18} className="text-gray-400 hover:text-gray-700" /></button>
             </div>
 
@@ -162,7 +174,7 @@ export function AdminClasses() {
                 <div className="w-14 h-14 rounded-full border-2 border-green-500 flex items-center justify-center">
                   <CheckCircle2 size={32} className="text-green-500" />
                 </div>
-                <p className="font-bold text-gray-900 text-lg">{modal === 'create' ? 'Class created!' : 'Class updated!'}</p>
+                <p className="font-bold text-gray-900 text-lg">Class created!</p>
                 <p className="text-sm text-gray-500">{form.name}</p>
                 <Button onClick={closeModal} className="mt-1">Done</Button>
               </div>
@@ -192,8 +204,8 @@ export function AdminClasses() {
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-                  <Button onClick={modal === 'create' ? handleCreate : handleEdit} disabled={!form.name.trim() || isSubmitting}>
-                    {isSubmitting ? 'Creating...' : modal === 'create' ? 'Create Class' : 'Save Changes'}
+                  <Button onClick={handleCreate} disabled={!form.name.trim() || isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Class'}
                   </Button>
                 </div>
               </div>

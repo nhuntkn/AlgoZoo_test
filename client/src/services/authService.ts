@@ -9,10 +9,10 @@ export function refreshToken() {
   return apiRequest<ApiPayload>('/api/auth/refresh-token')
 }
 
-export function login(email: string, password: string) {
+export function login(email: string, password: string, inviteToken?: string) {
   return apiRequest<ApiPayload>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, inviteToken }),
   })
 }
 

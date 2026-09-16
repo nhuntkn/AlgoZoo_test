@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchParams] = useSearchParams()
+  const inviteToken = searchParams.get('token') || undefined
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -14,7 +16,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const user = await login(email, password)
+      const user = await login(email, password, inviteToken)
 
       if (user.role === 'admin') navigate('/admin/dashboard')
       else if (user.role === 'trainer') navigate('/trainer/dashboard')

@@ -206,9 +206,13 @@ export function ManageClass() {
     <div>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-5 text-sm text-gray-400">
-        <Link to="/admin/dashboard" className="hover:text-accent flex items-center gap-1">
-          <ArrowLeft size={14} /> Classes
-        </Link>
+        <Link
+        to="/admin/classes"
+        className="hover:text-accent flex items-center gap-1"
+      >
+        <ArrowLeft size={14} /> Classes
+      </Link>
+
         <span>/</span>
         <span className="text-gray-700 font-medium">Manage Class</span>
       </div>

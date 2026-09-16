@@ -79,8 +79,8 @@ export function RegisterPage({ forcedRole }: { forcedRole?: Role }) {
             </div>
             <span className="font-bold text-lg text-gray-900">AlgoZoo</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Create your {role} account</h1>
-          <p className="text-sm text-gray-500">Complete the form to join your invited class.</p>
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Join as a {role}</h1>
+          <p className="text-sm text-gray-500">Use your existing account credentials or create a new account to join this class.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-4">
@@ -103,7 +103,7 @@ export function RegisterPage({ forcedRole }: { forcedRole?: Role }) {
         </form>
 
         <div className="px-8 pb-6 text-center">
-          <p className="text-xs text-gray-400">Already have an account? <a href="/login" className="text-accent font-semibold hover:underline">Log in instead</a></p>
+          <p className="text-xs text-gray-400">Already have an account? <a href={`/login?token=${encodeURIComponent(token)}`} className="text-accent font-semibold hover:underline">Log in and join instead</a></p>
         </div>
       </div>
     </div>
