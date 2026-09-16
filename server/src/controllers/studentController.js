@@ -1,5 +1,6 @@
 const ClassProblem = require('../models/classProblem');
 const Submission = require('../models/submission');
+const ClassMember = require('../models/classMember');
 const {getDisplayStatus} = require('../utils/submissionStatus');
 require('../models/problem')
 
@@ -134,6 +135,44 @@ exports.getStudentDashboardStats = async (req, res) => {
 };
 
 /**
+ * Get all classes the logged-in student is enrolled in
+ * GET /api/student/classes
+ */
+exports.getStudentClasses = async (req, res) => {
+    try {
+        const studentId = req.user._id || req.user.id;
+
+        // Find class membership records for this student
+        const memberships = await ClassMember.find({userId: studentId})
+            .populate('classId', 'name description isActive')
+            .lean();
+
+        const classes = memberships
+            .filter((m) => m.classId)
+            .map((m) => ({
+            classId: m.classId._id,
+            name: m.classId.name,
+            description: m.classId.description,
+            isActive: m.classId.isActive,
+            joinedAt: m.createdAt,
+        }));
+
+        return res.status(200).json({
+            status: 'success',
+            data: classes,
+        });
+    } catch (error) {
+        console.error('getStudentClasses Error:', error);
+        return res.status(500).json({ 
+            status: 'error', 
+            message: 'SERVER SIDE ERROR' 
+        });
+    }
+};
+
+
+
+/**
  * Get problem list for a specific class
  * GET /routes/student/classes/:classId/problems
  */
@@ -227,6 +266,7 @@ exports.getStudentProblemDetail = async (req, res) => {
             class_problem_id: classProblem._id,
         })
             .populate('content_blocks.file_id')
+            .populate('reviewed_by', 'fullname')
             .lean();
 
         return res.status(200).json({

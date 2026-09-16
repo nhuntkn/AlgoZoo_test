@@ -12,6 +12,14 @@ router.get(
     studentController.getStudentDashboardStats
 );
 
+//Get student progress dashboard stats for a specific class
+router.get(
+    '/classes',
+    isAuthenticatedUser,
+    verifyStudent,
+    studentController.getStudentClasses
+);
+
 //Get all assigned problems for a specific class
 router.get(
     '/classes/:classId/problems',
