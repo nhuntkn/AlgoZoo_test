@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Search, Loader2 } from 'lucide-react'
 import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { ProgressBar } from '../../../components/ui/ProgressBar'
@@ -11,6 +11,7 @@ function initials(name: string) {
 
 export function ClassStudents() {
   const { classId = '' } = useParams()
+  const navigate = useNavigate()
   const { classDetail, loading, error } = useClassDetail(classId)
   const [search, setSearch] = useState('')
 
@@ -72,7 +73,8 @@ export function ClassStudents() {
           return (
             <div
               key={s.user_id}
-              className={`grid grid-cols-[1fr_1fr] items-center px-6 py-4 hover:bg-gray-50 ${
+              onClick={() => navigate(`/trainer/classes/${classId}/submissions?student=${encodeURIComponent(s.name)}`)}
+              className={`grid grid-cols-[1fr_1fr] items-center px-6 py-4 hover:bg-gray-50 cursor-pointer ${
                 i < filtered.length - 1 ? 'border-b border-gray-50' : ''
               }`}
             >

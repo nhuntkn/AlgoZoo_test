@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Plus, X, ChevronLeft, Pencil, Trash2, ExternalLink, Paperclip, Loader2 } from 'lucide-react'
 import { TypeBadge, Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { Toast } from '../../components/ui/Toast'
 import { ProblemComposer } from '../../components/problem/ProblemComposer'
 import type { ProblemType, Difficulty, ProblemDraft, Problem } from '../../types/problem'
 import { useProblems } from '../../hooks/useProblems'
@@ -29,6 +30,7 @@ export function TrainerProblems() {
   const [modal, setModal] = useState<Modal | null>(null)
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const filtered = problems.filter((p) => {
     const q = search.toLowerCase()
@@ -65,11 +67,13 @@ export function TrainerProblems() {
       if (modal.mode === 'create') {
         const created = await createProblem(draft)
         setProblems((prev) => [created, ...prev])
+        setToast('Problem created successfully')
       } else if (modal.mode === 'edit') {
         const id = modal.target.id
         const updated = await updateProblem(id, draft)
         setProblems((prev) => prev.map((p) => (p.id === id ? updated : p)))
         setDetail((prev) => (prev?.id === id ? updated : prev))
+        setToast('Changes saved successfully')
       }
       closeModal()
     } catch (err) {
@@ -86,6 +90,7 @@ export function TrainerProblems() {
     try {
       await deleteProblem(modal.target.id)
       setProblems((prev) => prev.filter((p) => p.id !== modal.target.id))
+      setToast('Problem deleted successfully')
       closeModal()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not delete this problem')
@@ -315,8 +320,12 @@ export function TrainerProblems() {
           }
           onSave={(draft) => void handleSave(draft)}
           onClose={closeModal}
+          saving={saving}
+          error={actionError}
         />
       )}
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }
