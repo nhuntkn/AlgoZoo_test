@@ -248,7 +248,6 @@ exports.loginUser = async (req, res) => {
         return res.status(500).json({ status: 'error', message: 'SERVER SIDE ERROR' });
     }
 };
-
 /** 
  * Controller for logout
  * POST /routes/auth/logout

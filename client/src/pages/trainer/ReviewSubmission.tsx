@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, ImageIcon } from 'lucide-react'
@@ -33,11 +34,64 @@ export function ReviewSubmission() {
         <p className="text-gray-500 mb-6">Your feedback has been saved and the student will be notified.</p>
         <div className="flex gap-3">
           <Link to="/trainer/submissions"><Button variant="secondary">Back to Submissions</Button></Link>
+=======
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { FileText, Code2, ImageIcon, Paperclip, ChevronLeft, ChevronRight, Check, Pencil, Loader2 } from 'lucide-react'
+import { Badge } from '../../components/ui/Badge'
+import { Button } from '../../components/ui/Button'
+import { useNotifications } from '../../context/NotificationContext'
+import { getSubmissionDetail, reviewSubmission } from '../../services/submissionService'
+import { getProblemDetail, mapProblemType } from '../../services/problemService'
+import type { SubmissionDetail, ContentBlock } from '../../types/submission'
+import type { Problem } from '../../types/problem'
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-sm font-medium text-gray-900">{value}</p>
+    </div>
+  )
+}
+
+function BlockView({ block }: { block: ContentBlock }) {
+  if (block.type === 'text') {
+    return (
+      <div>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+          <FileText size={13} className="text-gray-400" />
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Explanation</span>
+        </div>
+        <div className="px-5 py-4 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{block.content}</div>
+      </div>
+    )
+  }
+
+  if (block.type === 'code') {
+    return (
+      <div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700 bg-gray-900">
+          <div className="flex items-center gap-2">
+            <Code2 size={13} className="text-gray-400" />
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Code</span>
+          </div>
+          <span className="text-xs text-gray-500 capitalize">{block.language}</span>
+        </div>
+        <div className="bg-gray-900 px-5 py-4 font-mono text-sm overflow-auto">
+          {(block.content ?? '').split('\n').map((line, i) => (
+            <div key={i} className="flex hover:bg-gray-800/40">
+              <span className="text-gray-600 w-7 flex-shrink-0 text-right mr-4 select-none text-xs leading-6">{i + 1}</span>
+              <span className="text-gray-200 leading-6">{line || ' '}</span>
+            </div>
+          ))}
+>>>>>>> d96b4f5600f620774943785cb2d6e27f419a5d6e
         </div>
       </div>
     )
   }
 
+<<<<<<< HEAD
   return (
     <div>
       {/* Breadcrumb + header */}
@@ -109,10 +163,212 @@ export function ReviewSubmission() {
                   [Screenshot preview would appear here]
                 </div>
               </div>
+=======
+  if (block.type === 'image') {
+    return (
+      <div>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+          <ImageIcon size={13} className="text-gray-400" />
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Screenshot</span>
+          <span className="text-xs text-gray-400 ml-1">{block.filename}</span>
+        </div>
+        <div className="p-5 bg-gray-50 min-h-24 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 text-gray-400">
+            <ImageIcon size={28} />
+            <p className="text-xs">{block.filename}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (block.type === 'file') {
+    return (
+      <div className="flex items-center gap-3 px-5 py-4">
+        <Paperclip size={15} className="text-gray-400 flex-shrink-0" />
+        <span className="text-sm text-gray-700">{block.filename}</span>
+      </div>
+    )
+  }
+
+  return null
+}
+
+function initials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+}
+
+export function ReviewSubmission() {
+  const { id = '' } = useParams()
+  const { addNotification } = useNotifications()
+
+  const [submission, setSubmission] = useState<SubmissionDetail | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [feedback, setFeedback] = useState('')
+  const [isEditing, setIsEditing] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    getSubmissionDetail(id)
+      .then((s) => {
+        if (cancelled) return
+        setSubmission(s)
+        setFeedback(s.feedback ?? '')
+        setIsEditing(s.status !== 'review')
+        if (s.problem?.id) {
+          getProblemDetail(s.problem.id).then((p) => { if (!cancelled) setProblem(p) }).catch(() => {})
+        }
+      })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load submission') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [id])
+
+  const handleMarkReviewed = async () => {
+    if (!submission) return
+    setSaving(true)
+    try {
+      await reviewSubmission(id, feedback)
+      setSubmission((prev) => (prev ? { ...prev, status: 'review', feedback } : prev))
+      setIsEditing(false)
+      addNotification({
+        recipientRole: 'student',
+        type: 'GRADE_RELEASED',
+        title: 'Submission graded',
+        message: `Your submission for ${submission.problem?.title ?? 'this problem'} has been graded.`,
+        context: `${submission.class?.className ?? ''} · ${problem ? mapProblemType(problem.type) : ''}`,
+        entityType: 'submission',
+        entityId: submission.submission_id,
+        linkTo: `/student/submissions/${submission.submission_id}`,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save this review')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="py-16 flex items-center justify-center text-sm text-gray-400 gap-2">
+        <Loader2 size={16} className="animate-spin" /> Loading submission...
+      </div>
+    )
+  }
+
+  if (error && !submission) {
+    return <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
+  }
+  if (!submission) return null
+
+  const done = submission.status === 'review'
+  const studentName = submission.student?.name ?? 'Unknown student'
+  const classId = submission.class?.id ?? ''
+
+  return (
+    <div>
+      {/* Back + Breadcrumb */}
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <Link
+          to={`/trainer/classes/${classId}/submissions`}
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-accent font-medium transition-colors"
+        >
+          <ChevronLeft size={15} /> Back to Submissions
+        </Link>
+        <span className="text-gray-200">|</span>
+        <div className="flex items-center gap-1.5 text-sm text-gray-400 flex-wrap">
+        <Link to="/trainer/classes" className="hover:text-accent">My Classes</Link>
+        <ChevronRight size={13} className="text-gray-300" />
+        <Link to={`/trainer/classes/${classId}/overview`} className="hover:text-accent">{submission.class?.className}</Link>
+        <ChevronRight size={13} className="text-gray-300" />
+        <Link to={`/trainer/classes/${classId}/submissions`} className="hover:text-accent">Submissions</Link>
+        <ChevronRight size={13} className="text-gray-300" />
+        <span className="text-gray-700 font-medium">{studentName}</span>
+        </div>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-accent text-white text-sm flex items-center justify-center font-bold flex-shrink-0">
+            {initials(studentName)}
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{studentName}</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {done ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-green-100 text-green-700">
+              <Check size={11} /> Reviewed
+            </span>
+          ) : (
+            <Badge variant="pending">Pending</Badge>
+          )}
+          {submission.is_late && <Badge variant="late">Late</Badge>}
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4 text-sm text-red-600">{error}</div>
+      )}
+
+      {/* Two-column layout: solution left, feedback right */}
+      <div className="flex gap-5 items-start">
+        {/* LEFT: problem description + content blocks */}
+        <div className="flex-1 min-w-0 space-y-3">
+          {/* Problem description card */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <FileText size={13} className="text-gray-400" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Problem</span>
+              <span className="ml-1 text-xs font-bold text-gray-700">{submission.problem?.title}</span>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              {problem ? (
+                <>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{problem.description}</p>
+                  {problem.resource_url && (
+                    <a href={problem.resource_url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                      View resource →
+                    </a>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-gray-400">Loading problem details...</p>
+              )}
+            </div>
+          </div>
+
+          {/* Student submission blocks */}
+          <div className="flex items-center gap-2 px-1">
+            <div className="w-7 h-7 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+              {initials(studentName)}
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Student's Submission</span>
+          </div>
+          {submission.content_blocks.map((block, i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <BlockView block={block} />
+            </div>
+          ))}
+          {submission.content_blocks.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-sm py-8 text-center text-sm text-gray-400">
+              No content in this submission.
+>>>>>>> d96b4f5600f620774943785cb2d6e27f419a5d6e
             </div>
           )}
         </div>
 
+<<<<<<< HEAD
         {/* Right — Feedback */}
         <div className="w-80 space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -139,9 +395,89 @@ export function ReviewSubmission() {
               Mark as Reviewed
             </Button>
             <p className="text-xs text-center text-gray-400">The student will see your feedback after you mark as reviewed.</p>
+=======
+        {/* RIGHT: submission info + feedback */}
+        <div className="w-[300px] flex-shrink-0 space-y-4">
+          {/* Submission info */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <h3 className="font-semibold text-gray-800 text-sm">Submission Info</h3>
+            <InfoRow label="Student" value={studentName} />
+            <InfoRow label="Problem" value={submission.problem?.title ?? '—'} />
+            <InfoRow label="Class" value={submission.class?.className ?? '—'} />
+            <InfoRow label="Submitted" value={new Date(submission.submitted_at).toLocaleString()} />
+            <InfoRow
+              label="Status"
+              value={
+                done
+                  ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700"><Check size={11} /> Reviewed</span>
+                  : <Badge variant="pending">Pending</Badge>
+              }
+            />
+          </div>
+
+          {/* Feedback */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 text-sm">Feedback</h3>
+              {done && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-1 text-xs text-accent font-semibold hover:underline"
+                >
+                  <Pencil size={11} /> Edit
+                </button>
+              )}
+            </div>
+
+            {done && !isEditing ? (
+              /* Read-only feedback display */
+              <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed whitespace-pre-line min-h-[80px]">
+                {feedback || <span className="text-gray-400 italic">No feedback written.</span>}
+              </div>
+            ) : (
+              /* Editable textarea */
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={10}
+                placeholder={`Write feedback for ${studentName}…\n\nExamples:\n- Great approach using hash map\n- Check edge case: empty array\n- Clean, readable code`}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-accent/60 resize-none"
+              />
+            )}
+
+            {done && !isEditing ? null : (
+              <>
+                <Button
+                  variant="success"
+                  className="w-full justify-center"
+                  onClick={() => void handleMarkReviewed()}
+                  disabled={saving || !feedback.trim()}
+                >
+                  {saving ? 'Saving...' : done ? 'Save Changes' : 'Mark as Reviewed'}
+                </Button>
+                {done && (
+                  <button
+                    onClick={() => { setIsEditing(false); setFeedback(submission.feedback ?? '') }}
+                    className="w-full text-xs text-center text-gray-400 hover:text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                )}
+                {!done && (
+                  <p className="text-xs text-center text-gray-400">
+                    Student sees feedback after you mark as reviewed.
+                  </p>
+                )}
+              </>
+            )}
+>>>>>>> d96b4f5600f620774943785cb2d6e27f419a5d6e
           </div>
         </div>
       </div>
     </div>
   )
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d96b4f5600f620774943785cb2d6e27f419a5d6e

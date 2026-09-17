@@ -1,66 +1,106 @@
-import React, { createContext, useContext, useState } from 'react'
-
-export type Role = 'student' | 'trainer' | 'admin'
-
-export interface User {
-  name: string
-  email: string
-  role: Role
-  initials: string
-}
+import React, { createContext, useEffect, useState } from 'react'
+import * as authService from '../services/authService'
+import { ApiError } from '../types/api'
+import type { Role, User } from '../types/auth'
 
 interface AuthContextType {
-  user: User
+  user: User | null
+  authLoading: boolean
+  login: (email: string, password: string, inviteToken?: string) => Promise<User>
+  register: (token: string, fullname: string, email: string, password: string) => Promise<User>
   setRole: (role: Role) => void
-  logout: () => void
+  logout: () => Promise<void>
 }
+export const AuthContext = createContext<AuthContextType | null>(null)
 
-const AuthContext = createContext<AuthContextType | null>(null)
+const getInitials = (name?: string) => {
+  if (!name || typeof name !== 'string') return 'U'
 
-const defaultUser: User = {
-  name: 'Juliana Silva',
-  email: 'juliana@algozoo.com',
-  role: 'student',
-  initials: 'JS',
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('')
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(defaultUser)
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
 
-  const setRole = (role: Role) => {
-    const names: Record<Role, { name: string; email: string; initials: string }> = {
-      student: { name: 'Juliana Silva', email: 'juliana@algozoo.com', initials: 'JS' },
-      trainer: { name: 'Nguyen Van Hung', email: 'hung@algozoo.com', initials: 'NH' },
-      admin: { name: 'Maya Tran', email: 'maya@algozoo.com', initials: 'MT' },
+  const toUser = (account: Record<string, unknown>): User => ({
+    name: (account.fullname || account.name || 'User') as string,
+    email: (account.email || '') as string,
+    role: (account.role as Role) || 'student',
+    initials: getInitials((account.fullname || account.name) as string),
+  })
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        let data
+        try {
+          data = await authService.getCurrentUser()
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.status !== 401) throw error
+          await authService.refreshToken()
+          data = await authService.getCurrentUser()
+        }
+
+        const currentUser = data?.data?.user as Record<string, unknown> | undefined
+        if (currentUser) setUser(toUser(currentUser))
+      } finally {
+        setAuthLoading(false)
+      }
     }
-    setUser({ role, ...names[role] })
+
+    void restoreSession()
+  }, [])
+
+  const login = async (email: string, password: string, inviteToken?: string): Promise<User> => {
+    const data = await authService.login(email, password, inviteToken)
+
+    const loggedInUser = data?.result?.data ?? {}
+    const nextUser = toUser(loggedInUser)
+
+    setUser(nextUser)
+    return nextUser
   }
 
-  const logout = () => setUser(defaultUser)
+  const register = async (token: string, fullname: string, email: string, password: string): Promise<User> => {
+    const data = await authService.register(token, fullname, email, password)
 
-  return <AuthContext.Provider value={{ user, setRole, logout }}>{children}</AuthContext.Provider>
+    const registeredUser = (data?.data?.user ?? {}) as Record<string, unknown>
+    const nextUser = toUser({ ...registeredUser, email: registeredUser.email || email })
+
+    setUser(nextUser)
+    return nextUser
+  }
+
+  const setRole = (role: Role) => {
+    setUser((current) => ({
+      ...(current || { name: '', email: '', initials: '' }),
+      role,
+    }))
+  }
+
+  const logout = async () => {
+    try {
+      await authService.logout()
+    } finally {
+      setUser(null)
+    }
+  }
+
+  return <AuthContext.Provider value={{ user, authLoading, login, register, setRole, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be inside AuthProvider')
-  return ctx
-}
+  const context = React.useContext(AuthContext)
 
-export function RoleSwitcher() {
-  const { user, setRole } = useAuth()
-  return (
-    <div className="px-2 py-2">
-      <p className="text-[10px] text-gray-500 mb-1 px-1">Demo Role</p>
-      <select
-        value={user.role}
-        onChange={(e) => setRole(e.target.value as Role)}
-        className="w-full bg-white/10 text-white text-xs rounded-lg px-2 py-1.5 border border-white/20 focus:outline-none"
-      >
-        <option value="student">Student</option>
-        <option value="trainer">Trainer</option>
-        <option value="admin">Admin</option>
-      </select>
-    </div>
-  )
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+
+  return context
 }
