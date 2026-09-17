@@ -36,6 +36,13 @@ router.get(
     studentController.getStudentProblemDetail
 );
 
+//Get submission list
+router.get(
+    '/submissions',
+    isAuthenticatedUser,
+    verifyStudent, 
+    studentController.getStudentSubmissions
+)
 //Create a submission
 router.post(
     '/submissions',
