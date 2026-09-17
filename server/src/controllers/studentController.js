@@ -436,7 +436,7 @@ exports.getStudentSubmissions = async(req, res) => {
         console.error('getStudentSubmissions Error:', error);
         return res.status(500).json({
             status: 'error',
-            messsage: 'SERVER SIDE ERROR',
+            message: 'SERVER SIDE ERROR',
         })
     }
 }
