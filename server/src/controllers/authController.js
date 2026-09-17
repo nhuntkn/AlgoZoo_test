@@ -245,8 +245,16 @@ exports.loginUser = async (req, res) => {
         // A login started from an invitation link also enrolls an existing account.
         if (inviteToken) {
             const classDoc = await Class.findOne({
-                trainerInviteToken: inviteToken,
-                trainerInviteTokenExpiresAt: { $gt: new Date() },
+                $or: [
+                    {
+                        studentJoinToken: inviteToken,
+                        studentJoinTokenExpiresAt: { $gt: new Date() },
+                    },
+                    {
+                        trainerInviteToken: inviteToken,
+                        trainerInviteTokenExpiresAt: { $gt: new Date() },
+                    },
+                ],
                 isActive: true,
             });
 
@@ -257,10 +265,13 @@ exports.loginUser = async (req, res) => {
                 });
             }
 
-            if (user.role !== 'trainer') {
+            // Determine which role this specific token was issued for
+            const invitedRole = inviteToken === classDoc.studentJoinToken ? 'student' : 'trainer';
+
+            if (user.role !== invitedRole) {
                 return res.status(403).json({
                     status: 'error',
-                    message: 'This invitation is for trainer accounts only',
+                    message: `This invitation is for ${invitedRole} accounts only`,
                 });
             }
 
