@@ -1,33 +1,189 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CheckCircle2, ClipboardList, Clock, Loader2 } from 'lucide-react'
-import { StatCard } from '../../components/ui/StatCard'
-import { Badge } from '../../components/ui/Badge'
-import { useAuth } from '../../hooks/useAuth'
-import { studentService } from '../../services/studentService'
-import type { StudentClass } from '../../types/class'
-import type { StudentDashboard as DashboardData } from '../../types/studentDashboard'
+import { ClipboardList, CheckCircle, ArrowRight } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
+
+// ─── Mock data (will be replaced with api.ts calls) ────────────────────────────
+
+const stats = {
+  totalProblems: 6,
+  reviewedSubmissions: 1,
+}
+
+type Deadline = {
+  id: number
+  problem: string
+  class: string
+  deadline: string
+  daysLeft: number
+}
+
+const deadlines: Deadline[] = [
+  { id: 1, problem: 'Binary Search', class: 'Batch 22', deadline: 'Sep 22, 2026', daysLeft: 10 },
+  { id: 2, problem: 'Process Scheduling', class: 'Batch 22', deadline: 'Sep 18, 2026', daysLeft: 6 },
+  { id: 3, problem: 'SQL Queries', class: 'Batch 22', deadline: 'Sep 15, 2026', daysLeft: 2 },
+]
+
+type RecentSubmission = {
+  id: number
+  problem: string
+  class: string
+  status: 'Reviewed' | 'Pending'
+  date: string
+}
+
+const recentSubmissions: RecentSubmission[] = [
+  { id: 1, problem: 'Two Sum', class: 'Batch 22', status: 'Reviewed', date: 'Sep 10' },
+  { id: 2, problem: 'Binary Search', class: 'Batch 22', status: 'Pending', date: 'Sep 14' },
+]
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function getDaysLeftColor(days: number): string {
+  if (days <= 2) return 'text-red-500 font-semibold'
+  if (days <= 6) return 'text-orange-500 font-semibold'
+  return 'text-gray-700'
+}
+
+function getStatusBadge(status: 'Reviewed' | 'Pending') {
+  if (status === 'Reviewed') {
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+        Reviewed
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-600">
+      Pending
+    </span>
+  )
+}
+
+// ─── Component ─────────────────────────────────────────────────────────────────
 
 export function StudentDashboard() {
   const { user } = useAuth()
-  const [classes, setClasses] = useState<StudentClass[]>([])
-  const [selectedClass, setSelectedClass] = useState('')
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const firstName = user.name.split(' ')[0]
 
-  useEffect(() => {
-    studentService.getClasses().then((response) => { setClasses(response.data); setSelectedClass(response.data[0]?.classId || '') }).catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'Unable to load classes')).finally(() => setLoading(false))
-  }, [])
+  return (
+    <div>
+      {/* Greeting */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Good morning, {firstName}</h1>
+        <p className="text-sm text-gray-400 mt-1">Here's your learning progress.</p>
+      </div>
 
-  useEffect(() => {
-    if (!selectedClass) return
-    setLoading(true)
-    studentService.getDashboard(selectedClass).then((response) => setDashboard(response.data)).catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'Unable to load dashboard')).finally(() => setLoading(false))
-  }, [selectedClass])
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 gap-5 mb-5">
+        {/* Total Problems */}
+        <div className="bg-white rounded-2xl shadow-sm px-6 py-5 flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Total Problems</p>
+            <p className="text-4xl font-bold text-gray-900 mt-1">{stats.totalProblems}</p>
+            <p className="text-xs text-gray-400 mt-1">Assigned to you</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+            <ClipboardList size={20} className="text-accent" />
+          </div>
+        </div>
 
-  const firstName = user?.name.split(' ')[0] || 'there'
-  const stats = dashboard?.stats
+        {/* Reviewed Submissions */}
+        <div className="bg-white rounded-2xl shadow-sm px-6 py-5 flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Reviewed Submissions</p>
+            <p className="text-4xl font-bold text-gray-900 mt-1">{stats.reviewedSubmissions}</p>
+            <p className="text-xs text-gray-400 mt-1">{stats.reviewedSubmissions} / {stats.totalProblems} problems</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+            <CheckCircle size={20} className="text-green-500" />
+          </div>
+        </div>
+      </div>
 
-  return <div><div className="mb-5"><h1 className="text-2xl font-bold text-gray-900">Good morning, {firstName}</h1><p className="text-sm text-gray-400 mt-1">Here&apos;s your learning progress.</p></div>{classes.length > 1 && <div className="bg-white rounded-2xl shadow-sm p-4 mb-5"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-4" htmlFor="student-class">Class</label><select id="student-class" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} className="border border-gray-200 rounded-xl px-3 py-2 text-sm">{classes.map((item) => <option key={item.classId} value={item.classId}>{item.name}</option>)}</select></div>}{error && <p className="mb-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}{loading && <p className="mb-5 flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Loading...</p>}<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5"><StatCard label="Total Problems" value={stats?.totalProblems ?? 0} icon={<ClipboardList size={18} className="text-blue-600" />} color="bg-blue-50" trend="Assigned to you" /><StatCard label="Reviewed Submissions" value={stats?.reviewedCount ?? 0} icon={<CheckCircle2 size={18} className="text-green-600" />} color="bg-green-50" trend={`${stats?.submittedCount ?? 0} submitted`} /><StatCard label="Pending Review" value={stats?.pendingReviewCount ?? 0} icon={<Clock size={18} className="text-amber-600" />} color="bg-amber-50" trend="Waiting for feedback" /></div><div className="grid lg:grid-cols-2 gap-5"><section className="bg-white rounded-2xl shadow-sm overflow-hidden"><div className="px-6 py-4 border-b border-gray-100 flex justify-between"><h2 className="font-bold text-gray-900">Upcoming Deadlines</h2><Link to={`/student/classes/${selectedClass}/problems`} className="text-xs text-accent font-semibold flex items-center gap-1">View all <ArrowRight size={12} /></Link></div>{dashboard?.upcomingDeadlines.length ? dashboard.upcomingDeadlines.map((item) => <Link key={item.classProblemId} to={`/student/classes/${selectedClass}/problems/${item.classProblemId}`} className="flex items-center justify-between px-6 py-4 border-b border-gray-50"><span className="text-sm font-medium text-gray-900">{item.title}</span><span className="text-xs text-gray-400">{item.daysLeft}</span></Link>) : <p className="p-6 text-sm text-gray-400">No upcoming deadlines.</p>}</section><section className="bg-white rounded-2xl shadow-sm overflow-hidden"><div className="px-6 py-4 border-b border-gray-100"><h2 className="font-bold text-gray-900">Recent Submissions</h2></div>{dashboard?.recentSubmissions.length ? dashboard.recentSubmissions.map((item) => <div key={item.submissionId} className="flex items-center justify-between px-6 py-4 border-b border-gray-50"><span className="text-sm font-medium text-gray-900">{item.title}</span><Badge variant={item.status === 'Reviewed' ? 'reviewed' : item.status === 'Late' ? 'late' : 'pending'}>{item.status}</Badge></div>) : <p className="p-6 text-sm text-gray-400">No submissions yet.</p>}</section></div></div>
+      {/* ── Tables Row ── */}
+      <div className="grid grid-cols-2 gap-5">
+        {/* Upcoming Deadlines */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4">
+            <h2 className="text-base font-bold text-gray-900">Upcoming Deadlines</h2>
+            <Link
+              to="/student/classes/2/problems"
+              className="flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
+            >
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_80px_120px_50px] px-6 py-2.5 border-t border-gray-100">
+            {['PROBLEM', 'CLASS', 'DEADLINE', 'LEFT'].map((h) => (
+              <span key={h} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {/* Rows */}
+          <div>
+            {deadlines.map((d, i) => (
+              <div
+                key={d.id}
+                className={`grid grid-cols-[1fr_80px_120px_50px] items-center px-6 py-3.5 ${
+                  i < deadlines.length - 1 ? 'border-b border-gray-50' : ''
+                }`}
+              >
+                <span className="text-sm font-medium text-gray-900">{d.problem}</span>
+                <span className="text-sm text-gray-500">{d.class}</span>
+                <span className="text-sm text-gray-500">{d.deadline}</span>
+                <span className={`text-sm ${getDaysLeftColor(d.daysLeft)}`}>
+                  {d.daysLeft}d
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Submissions */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4">
+            <h2 className="text-base font-bold text-gray-900">Recent Submissions</h2>
+            <Link
+              to="/student/submissions"
+              className="flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
+            >
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_80px_100px_70px] px-6 py-2.5 border-t border-gray-100">
+            {['PROBLEM', 'CLASS', 'STATUS', 'DATE'].map((h) => (
+              <span key={h} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {/* Rows */}
+          <div>
+            {recentSubmissions.map((s, i) => (
+              <div
+                key={s.id}
+                className={`grid grid-cols-[1fr_80px_100px_70px] items-center px-6 py-3.5 ${
+                  i < recentSubmissions.length - 1 ? 'border-b border-gray-50' : ''
+                }`}
+              >
+                <span className="text-sm font-medium text-gray-900">{s.problem}</span>
+                <span className="text-sm text-gray-500">{s.class}</span>
+                {getStatusBadge(s.status)}
+                <span className="text-sm text-gray-500">{s.date}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

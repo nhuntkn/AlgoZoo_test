@@ -1,105 +1,104 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  BookOpen,
-  Library,
-  FileText,
-  Users,
-  Settings,
-  LogOut,
-} from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
+import { Link, useLocation } from 'react-router-dom'
+import { LayoutDashboard, BookOpen, FileText, Settings, LogOut, Users } from 'lucide-react'
+import { useAuth, RoleSwitcher } from '../../context/AuthContext'
+import type { Role } from '../../types'
 
-interface NavItem {
+type NavItem = {
+  label: string
   to: string
   icon: React.ReactNode
-  label: string
 }
 
-function getNavItems(role: string): NavItem[] {
-  if (role === 'student') {
-    return [
-      { to: '/student/dashboard', icon: <LayoutDashboard size={17} />, label: 'Dashboard' },
-      { to: '/student/classes', icon: <BookOpen size={17} />, label: 'My Classes' },
-      { to: '/student/submissions', icon: <FileText size={17} />, label: 'My Submissions' },
-    ]
-  }
-  if (role === 'trainer') {
-    return [
-      { to: '/trainer/dashboard', icon: <LayoutDashboard size={17} />, label: 'Dashboard' },
-      { to: '/trainer/classes', icon: <BookOpen size={17} />, label: 'My Classes' },
-      { to: '/trainer/problems', icon: <Library size={17} />, label: 'Problem Bank' },
-    ]
-  }
-  // admin
-  return [
-    { to: '/admin/dashboard', icon: <LayoutDashboard size={17} />, label: 'Dashboard' },
-    { to: '/admin/classes', icon: <BookOpen size={17} />, label: 'Classes' },
-    { to: '/admin/users', icon: <Users size={17} />, label: 'Users' },
-    { to: '/admin/problems', icon: <Library size={17} />, label: 'Problem Bank' },
-  ]
+const menuItems: Record<Role, NavItem[]> = {
+  student: [
+    { label: 'Dashboard', to: '/student/dashboard', icon: <LayoutDashboard size={18} /> },
+    { label: 'My Classes', to: '/student/classes', icon: <BookOpen size={18} /> },
+    { label: 'My Submissions', to: '/student/submissions', icon: <FileText size={18} /> },
+  ],
+  trainer: [
+    { label: 'Dashboard', to: '/trainer/dashboard', icon: <LayoutDashboard size={18} /> },
+    { label: 'My Classes', to: '/trainer/classes', icon: <BookOpen size={18} /> },
+    { label: 'Problem Bank', to: '/trainer/problems', icon: <FileText size={18} /> },
+  ],
+  admin: [
+    { label: 'Dashboard', to: '/admin/dashboard', icon: <LayoutDashboard size={18} /> },
+    { label: 'Classes', to: '/admin/classes', icon: <BookOpen size={18} /> },
+    { label: 'Users', to: '/admin/users', icon: <Users size={18} /> },
+  ],
 }
 
 export function Sidebar() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  if (!user) return null
-  const navItems = getNavItems(user.role)
+  const location = useLocation()
+
+  const items = menuItems[user.role]
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-[220px] bg-sidebar flex flex-col z-20">
-      {/* User info */}
-      <div className="px-5 pt-5 pb-4 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+    <aside className="fixed left-0 top-0 bottom-0 w-[200px] bg-sidebar flex flex-col z-30">
+      {/* User profile */}
+      <div className="px-5 pt-6 pb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
             {user.initials}
           </div>
           <div className="min-w-0">
-            <p className="text-white text-sm font-semibold truncate leading-tight">{user.name}</p>
-            <p className="text-gray-400 text-[11px] capitalize">{user.role}</p>
+            <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+            <p className="text-xs text-gray-400 capitalize">{user.role}</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 pb-1 pt-1">Menu</p>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-accent text-white'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
-              }`
-            }
-          >
-            {item.icon}
-            {item.label}
-          </NavLink>
-        ))}
-
-        <div className="pt-2">
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 pb-1">General</p>
-          <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-            <Settings size={17} /> Settings
-          </button>
+      {/* Menu */}
+      <nav className="flex-1 px-3">
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mb-2">
+          Menu
+        </p>
+        <div className="space-y-1">
+          {items.map((item) => {
+            const isActive = location.pathname.startsWith(item.to)
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-accent text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-sidebar-hover'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            )
+          })}
         </div>
+
+        {/* General section */}
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-3 mt-6 mb-2">
+          General
+        </p>
+        <Link
+          to="/settings"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-sidebar-hover transition-colors"
+        >
+          <Settings size={18} />
+          Settings
+        </Link>
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-white/10 pt-2 pb-4 flex-shrink-0">
-        <div className="px-3 mt-1">
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-          >
-            <LogOut size={16} /> Log Out
-          </button>
-        </div>
+      {/* Demo role switcher — remove in production */}
+      <RoleSwitcher />
+
+      {/* Logout */}
+      <div className="px-3 pb-5">
+        <button
+          onClick={logout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-sidebar-hover transition-colors w-full"
+        >
+          <LogOut size={18} />
+          Log Out
+        </button>
       </div>
-    </div>
+    </aside>
   )
 }

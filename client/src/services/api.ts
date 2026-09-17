@@ -1,91 +1,98 @@
-// services/api.ts
+/**
+ * Centralized API service layer.
+ *
+ * Currently returns mock data. When backend is ready, replace each function
+ * body with a real fetch/axios call. All pages import from here, so you only
+ * change this file.
+ *
+ * Usage:
+ *   import { api } from '@/services/api'
+ *   const classes = await api.classes.list()
+ */
 
-const configuredApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
-const API_BASE_URL = configuredApiUrl.endsWith('/api') ? configuredApiUrl : `${configuredApiUrl}/api`
+const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
-export class ApiError extends Error {
-  readonly status: number
+// ─── HTTP helper ───────────────────────────────────────────────────────────────
 
-  constructor(message: string, status: number) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-  }
-}
-
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    credentials: 'include',
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers,
+      // TODO: add auth token header
+      // 'Authorization': `Bearer ${getToken()}`,
+      ...options?.headers,
     },
+    ...options,
   })
 
-  const body = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new ApiError(
-      body?.result?.message ?? body?.message ?? 'Request failed',
-      response.status
-    )
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
   }
 
-  return body
+  return res.json()
 }
 
-
-async function requestFormData<T>(
-  path: string,
-  formData: FormData
-): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
-  })
-
-  const body = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new ApiError(
-      body?.message ?? 'Request failed',
-      response.status
-    )
-  }
-
-  return body
-}
+// ─── API namespaces (placeholder — implement when backend is ready) ────────────
 
 export const api = {
-  get: <T>(path: string) =>
-    request<T>(path),
+  auth: {
+    login: (email: string, password: string) =>
+      request<{ token: string; user: import('../types').User }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      }),
+    me: () => request<import('../types').User>('/auth/me'),
+  },
 
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'POST',
-      body: body !== undefined
-        ? JSON.stringify(body)
-        : undefined,
-    }),
+  classes: {
+    list: () => request<import('../types').ClassItem[]>('/classes'),
+    get: (id: string) => request<import('../types').ClassItem>(`/classes/${id}`),
+    create: (data: Partial<import('../types').ClassItem>) =>
+      request<import('../types').ClassItem>('/classes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
 
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'PATCH',
-      body: body !== undefined
-        ? JSON.stringify(body)
-        : undefined,
-    }),
+  problems: {
+    list: () => request<import('../types').Problem[]>('/problems'),
+    get: (id: string) => request<import('../types').Problem>(`/problems/${id}`),
+    create: (data: Partial<import('../types').Problem>) =>
+      request<import('../types').Problem>('/problems', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<import('../types').Problem>) =>
+      request<import('../types').Problem>(`/problems/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<void>(`/problems/${id}`, { method: 'DELETE' }),
+  },
 
-  delete: <T>(path: string) =>
-    request<T>(path, {
-      method: 'DELETE',
-    }),
+  submissions: {
+    list: (params?: { classId?: string; status?: string }) => {
+      const qs = new URLSearchParams(params as Record<string, string>).toString()
+      return request<import('../types').Submission[]>(`/submissions?${qs}`)
+    },
+    get: (id: string) => request<import('../types').Submission>(`/submissions/${id}`),
+    create: (data: Partial<import('../types').Submission>) =>
+      request<import('../types').Submission>('/submissions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    review: (id: string, feedback: string) =>
+      request<import('../types').Submission>(`/submissions/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ feedback }),
+      }),
+  },
 
-  postFormData: <T>(path: string, formData: FormData) =>
-    requestFormData<T>(path, formData),
+  users: {
+    list: (params?: { role?: string }) => {
+      const qs = new URLSearchParams(params as Record<string, string>).toString()
+      return request<import('../types').User[]>(`/users?${qs}`)
+    },
+  },
 }

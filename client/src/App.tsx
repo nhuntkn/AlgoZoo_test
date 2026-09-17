@@ -1,93 +1,116 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
-import { useAuth } from './hooks/useAuth'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
+
+// Layout & guards
 import { AppLayout } from './components/layout/AppLayout'
-import { NotificationsPage } from './pages/NotificationsPage'
+import { RequireRole } from './components/common/RequireRole'
 
-// Auth
-import { LoginPage } from './pages/auth/LoginPage'
-import { RegisterPage } from './pages/auth/RegisterPage'
-
-// Student
+// ── Student pages ──
 import { StudentDashboard } from './pages/student/StudentDashboard'
 import { StudentClasses } from './pages/student/StudentClasses'
 import { StudentClassOverview } from './pages/student/class/StudentClassOverview'
 import { StudentProblemList } from './pages/student/class/StudentProblemList'
-import { ProblemWorkspace } from './pages/student/ProblemWorkspace'
 import { StudentSubmissions } from './pages/student/StudentSubmissions'
 import { SubmissionStatus } from './pages/student/SubmissionStatus'
-
-// Trainer
-import { TrainerDashboard } from './pages/trainer/TrainerDashboard'
-import { TrainerClasses } from './pages/trainer/TrainerClasses'
-import { ClassOverview } from './pages/trainer/class/ClassOverview'
-import { ClassProblems } from './pages/trainer/class/ClassProblems'
-import { ClassSubmissions } from './pages/trainer/class/ClassSubmissions'
-import { ClassStudents } from './pages/trainer/class/ClassStudents'
-import { TrainerProblems } from './pages/trainer/TrainerProblems'
-import { ReviewSubmission } from './pages/trainer/ReviewSubmission'
-
-// Admin
+import { StudentProblemWorkspace } from './pages/student/class/StudentProblemWorkspace'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { AdminClasses } from './pages/admin/AdminClasses'
+import { AdminManageClass } from './pages/admin/AdminManageClass'
 import { AdminUsers } from './pages/admin/AdminUsers'
-import { AdminProblems } from './pages/admin/AdminProblems'
-import { ManageClass } from './pages/admin/ManageClass'
+import { AdminUserDetail } from './pages/admin/AdminUserDetail'
+import { TrainerDashboard } from './pages/trainer/TrainerDashboard'
+import { TrainerClasses } from './pages/trainer/TrainerClasses'
+import { TrainerClassOverview } from './pages/trainer/class/TrainerClassOverview'
+import { TrainerClassProblems } from './pages/trainer/class/TrainerClassProblems'
+import { TrainerClassSubmissions } from './pages/trainer/class/TrainerClassSubmissions'
+import { TrainerClassStudents } from './pages/trainer/class/TrainerClassStudents'
+import { TrainerSubmissionDetail } from './pages/trainer/class/TrainerSubmissionDetail'
+import { TrainerProblemBank } from './pages/trainer/problems/TrainerProblemBank'
+import { TrainerCreateProblem } from './pages/trainer/problems/TrainerCreateProblem'
 
-function RequireAuth() {
-  const { user, authLoading } = useAuth()
-  if (authLoading) return null
-  return user ? <Outlet /> : <Navigate to="/login" replace />
+// ─── Placeholder (for pages not yet built from Figma) ──────────────────────────
+
+function Placeholder({ title }: { title: string }) {
+  return (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+        <p className="text-sm text-gray-400">This page will be built from Figma designs.</p>
+      </div>
+    </div>
+  )
 }
+
+// ─── Role redirect ─────────────────────────────────────────────────────────────
+
+function RoleRedirect() {
+  const { user } = useAuth()
+  return <Navigate to={`/${user.role}/dashboard`} replace />
+}
+
+// ─── Routes ────────────────────────────────────────────────────────────────────
 
 function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Placeholder title="Login" />} />
+      <Route path="/join/student/:token" element={<Placeholder title="Student Join" />} />
+      <Route path="/join/trainer/:token" element={<Placeholder title="Trainer Join" />} />
+      <Route path="/" element={<RoleRedirect />} />
 
-      <Route element={<RequireAuth />}>
-        <Route element={<AppLayout />}>
-        {/* Student */}
-        <Route path="/student/dashboard" element={<StudentDashboard />} />
-        <Route path="/student/classes" element={<StudentClasses />} />
-        <Route path="/student/classes/:classId" element={<Navigate to="overview" replace />} />
-        <Route path="/student/classes/:classId/overview" element={<StudentClassOverview />} />
-        <Route path="/student/classes/:classId/problems" element={<StudentProblemList />} />
-        <Route path="/student/classes/:classId/problems/:problemId" element={<ProblemWorkspace />} />
-        <Route path="/student/submissions" element={<StudentSubmissions />} />
-        <Route path="/student/submissions/:id" element={<SubmissionStatus />} />
+      {/* Protected — inside AppLayout */}
+      <Route element={<AppLayout />}>
 
-        {/* Trainer */}
-        <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
-        <Route path="/trainer/classes" element={<TrainerClasses />} />
-        <Route path="/trainer/classes/:classId" element={<Navigate to="overview" replace />} />
-        <Route path="/trainer/classes/:classId/overview" element={<ClassOverview />} />
-        <Route path="/trainer/classes/:classId/problems" element={<ClassProblems />} />
-        <Route path="/trainer/classes/:classId/submissions" element={<ClassSubmissions />} />
-        <Route path="/trainer/classes/:classId/students" element={<ClassStudents />} />
-        <Route path="/trainer/problems" element={<TrainerProblems />} />
-        <Route path="/trainer/submissions/:id" element={<ReviewSubmission />} />
-
-        {/* Admin */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/classes" element={<AdminClasses />} />
-        <Route path="/admin/classes/:classId/manage" element={<ManageClass />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/problems" element={<AdminProblems />} />
-
-        {/* Notifications (all roles) */}
-        <Route path="/notifications" element={<NotificationsPage />} />
+        {/* ── Student ── */}
+        <Route element={<RequireRole allowed="student" />}>
+          <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/classes" element={<StudentClasses />} />
+          <Route path="/student/classes/:classId" element={<Navigate to="overview" replace />} />
+          <Route path="/student/classes/:classId/overview" element={<StudentClassOverview />} />
+          <Route path="/student/classes/:classId/problems" element={<StudentProblemList />} />
+          <Route path="/student/classes/:classId/problems/:problemId" element={<StudentProblemWorkspace />} />
+          <Route path="/student/submissions" element={<StudentSubmissions />} />
+          <Route path="/student/submissions/:id" element={<SubmissionStatus />} />
         </Route>
+
+        {/* ── Trainer ── */}
+        <Route element={<RequireRole allowed="trainer" />}>
+          <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
+          <Route path="/trainer/classes" element={<TrainerClasses />} />
+          <Route path="/trainer/classes/:classId" element={<Navigate to="overview" replace />} />
+          <Route path="/trainer/classes/:classId/overview" element={<TrainerClassOverview />} />
+          <Route path="/trainer/classes/:classId/problems" element={<TrainerClassProblems />} />
+          <Route path="/trainer/classes/:classId/submissions" element={<TrainerClassSubmissions />} />
+          <Route path="/trainer/classes/:classId/submissions/:submissionId" element={<TrainerSubmissionDetail />} />
+          <Route path="/trainer/submissions/:submissionId" element={<TrainerSubmissionDetail />} />
+          <Route path="/trainer/classes/:classId/students" element={<TrainerClassStudents />} />
+          <Route path="/trainer/problems" element={<TrainerProblemBank />} />
+          <Route path="/trainer/problems/new" element={<TrainerCreateProblem />} />
+          <Route path="/trainer/problems/:problemId/edit" element={<TrainerCreateProblem />} />
+        </Route>
+
+        {/* ── Admin ── */}
+        <Route element={<RequireRole allowed="admin" />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/classes" element={<AdminClasses />} />
+          <Route path="/admin/classes/:classId/manage" element={<AdminManageClass />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
+        </Route>
+
+        {/* ── Shared ── */}
+        <Route path="/notifications" element={<Placeholder title="Notifications" />} />
+
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
+
+// ─── App ───────────────────────────────────────────────────────────────────────
 
 function App() {
   return (
