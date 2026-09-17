@@ -56,11 +56,11 @@ export function StudentDashboard() {
           </div>
           {dashboard?.upcomingDeadlines.length ? (
             <>
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-6 px-6 py-2 text-[10px] font-bold text-gray-400 tracking-widest border-b border-gray-50">
+              <div className="grid grid-cols-[1fr_100px_120px_45px] px-6 py-2 text-[10px] font-bold text-gray-400 tracking-widest border-b border-gray-50">
                 <span>PROBLEM</span><span>CLASS</span><span>DEADLINE</span><span>LEFT</span>
               </div>
               {dashboard.upcomingDeadlines.map((item) => (
-                <Link key={item.classProblemId} to={`/student/classes/${selectedClass}/problems/${item.classProblemId}`} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-6 items-center px-6 py-4 border-b border-gray-50 hover:bg-gray-50 last:border-b-0">
+                <Link key={item.classProblemId} to={`/student/classes/${selectedClass}/problems/${item.classProblemId}`} className="grid grid-cols-[1fr_100px_120px_45px] items-center px-6 py-4 border-b border-gray-50 hover:bg-gray-50 last:border-b-0">
                   <span className="text-sm font-medium text-gray-900">{item.title}</span>
                   <span className="text-sm text-gray-400">{item.className}</span>
                   <span className="text-sm text-gray-400">{new Date(item.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -79,14 +79,14 @@ export function StudentDashboard() {
           </div>
           {dashboard?.recentSubmissions.length ? (
             <>
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-6 px-6 py-2 text-[10px] font-bold text-gray-400 tracking-widest border-b border-gray-50">
+              <div className="grid grid-cols-[7fr_6fr_4fr_3fr] px-6 py-2 text-[10px] font-bold text-gray-400 tracking-widest border-b border-gray-50">
                 <span>PROBLEM</span><span>CLASS</span><span>STATUS</span><span>DATE</span>
               </div>
               {dashboard.recentSubmissions.map((item) => (
-                <div key={item.submissionId} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-6 items-center px-6 py-4 border-b border-gray-50 last:border-b-0">
-                  <span className="text-sm font-medium text-gray-900">{item.title}</span>
-                  <span className="text-sm text-gray-400">{item.className}</span>
-                  <Badge variant={item.status === 'Reviewed' ? 'reviewed' : item.status === 'Late' ? 'late' : 'pending'}>{item.status}</Badge>
+                <div key={item.submissionId} className="grid grid-cols-[7fr_6fr_4fr_3fr] items-center px-6 py-4 border-b border-gray-50 last:border-b-0">
+                  <span className="text-sm font-medium text-gray-900 truncate min-w-0">{item.title}</span>
+                  <span className="text-sm text-gray-400 truncate min-w-0">{item.className}</span>
+                  <div><Badge variant={item.status === 'Reviewed' ? 'reviewed' : item.status === 'Late' ? 'late' : 'pending'}>{item.status}</Badge></div>
                   <span className="text-sm text-gray-400">{new Date(item.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                 </div>
               ))}
