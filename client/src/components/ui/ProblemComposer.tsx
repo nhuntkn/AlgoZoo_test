@@ -47,7 +47,7 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
   const [title, setTitle] = useState(initial?.title ?? '')
   const [titleError, setTitleError] = useState(false)
   const [type, setType] = useState<ProblemType>(initial?.type ?? 'DSA')
-  const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? 'medium')
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(initial?.difficulty ?? null)
   const [description, setDescription] = useState(initial?.description ?? '')
   const [resources, setResources] = useState<Resource[]>(initial?.resources ?? [])
   const [topicOpen, setTopicOpen] = useState(false)
@@ -332,11 +332,13 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
                   <ChevronDown size={14} className={`text-gray-400 transition-transform ${topicOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {topicOpen && (
+                  <>
+                  <div className="fixed inset-0 z-10" onClick={() => setTopicOpen(false)} />
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
                     {(['DSA', 'OS', 'Database', 'Other'] as const).map((t) => (
                       <button
                         key={t}
-                        onClick={() => { setType(t); setTopicOpen(false) }}
+                        onClick={() => { setType(t); setDifficulty(null); setTopicOpen(false) }}
                         className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-gray-50 ${
                           type === t ? 'text-accent font-semibold bg-red-50/50' : 'text-gray-700'
                         }`}
@@ -349,17 +351,19 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
                       </button>
                     ))}
                   </div>
+                  </>
                 )}
               </div>
             </div>
 
             {/* Difficulty */}
-            <div>
+            <div className={type !== 'DSA' ? 'opacity-40 pointer-events-none' : ''}>
               <label className="block text-sm font-semibold text-gray-800 mb-2">Difficulty</label>
               <div className="flex rounded-xl border border-gray-200 overflow-hidden">
                 {(['easy', 'medium', 'hard'] as Difficulty[]).map((d, i) => (
                   <button
                     key={d}
+                    disabled={type !== 'DSA'}
                     onClick={() => setDifficulty(d)}
                     className={`flex-1 py-2 text-xs font-semibold capitalize transition-colors ${
                       i > 0 ? 'border-l border-gray-200' : ''
