@@ -45,7 +45,7 @@ exports.generateJoinLink = async (req, res) => {
         await classDoc.save();
 
         //5. Build full invitation URL
-        const joinUrl = `${APP_BASE_URL}/register?token=${token}&role=${role}`;
+        const joinUrl = `${APP_BASE_URL}/register?token=${token}`;
 
         return res.status(200).json({
             status: 'success',
