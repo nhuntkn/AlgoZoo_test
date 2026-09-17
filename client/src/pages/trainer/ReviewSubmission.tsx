@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { FileText, Code2, ImageIcon, Paperclip, ChevronLeft, ChevronRight, Check, Pencil, Loader2 } from 'lucide-react'
+import { FileText, Code2, ImageIcon, Paperclip, Download, ChevronLeft, ChevronRight, Check, Pencil, Loader2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { useNotifications } from '../../context/NotificationContext'
 import { getSubmissionDetail, reviewSubmission } from '../../services/submissionService'
+import { getFileUrl } from '../../services/fileService'
 import { getProblemDetail, mapProblemType } from '../../services/problemService'
 import type { SubmissionDetail, ContentBlock } from '../../types/submission'
 import type { Problem } from '../../types/problem'
@@ -54,28 +55,56 @@ function BlockView({ block }: { block: ContentBlock }) {
   }
 
   if (block.type === 'image') {
+    const src = block.file_id ? getFileUrl(block.file_id) : undefined
     return (
       <div>
         <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
           <ImageIcon size={13} className="text-gray-400" />
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Screenshot</span>
           <span className="text-xs text-gray-400 ml-1">{block.filename}</span>
+          {src && (
+            <a
+              href={src}
+              download={block.filename}
+              className="ml-auto inline-flex items-center gap-1 text-xs text-accent hover:underline"
+            >
+              <Download size={12} /> Download
+            </a>
+          )}
         </div>
         <div className="p-5 bg-gray-50 min-h-24 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2 text-gray-400">
-            <ImageIcon size={28} />
-            <p className="text-xs">{block.filename}</p>
-          </div>
+          {src ? (
+            <img src={src} alt={block.filename ?? 'Submitted screenshot'} className="max-w-full max-h-96 rounded-lg" />
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-gray-400">
+              <ImageIcon size={28} />
+              <p className="text-xs">{block.filename}</p>
+            </div>
+          )}
         </div>
       </div>
     )
   }
 
   if (block.type === 'file') {
+    const src = block.file_id ? getFileUrl(block.file_id) : undefined
+    const isPdf = block.filename?.toLowerCase().endsWith('.pdf')
     return (
-      <div className="flex items-center gap-3 px-5 py-4">
-        <Paperclip size={15} className="text-gray-400 flex-shrink-0" />
-        <span className="text-sm text-gray-700">{block.filename}</span>
+      <div>
+        <div className="flex items-center gap-3 px-5 py-4">
+          <Paperclip size={15} className="text-gray-400 flex-shrink-0" />
+          {src ? (
+            <a href={src} download={block.filename} className="text-sm text-accent hover:underline inline-flex items-center gap-1.5">
+              {block.filename}
+              <Download size={13} />
+            </a>
+          ) : (
+            <span className="text-sm text-gray-700">{block.filename}</span>
+          )}
+        </div>
+        {src && isPdf && (
+          <iframe src={src} title={block.filename ?? 'PDF preview'} className="w-full h-96 border-t border-gray-100" />
+        )}
       </div>
     )
   }
