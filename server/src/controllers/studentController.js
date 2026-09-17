@@ -13,6 +13,15 @@ exports.getStudentDashboardStats = async (req, res) => {
         const {classId} = req.params;
         const studentId = req.user._id || req.user.id;
 
+        // Verify class membership
+        const isMember = await ClassMember.exists({ classId, userId: studentId });
+        if (!isMember) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. You are not enrolled in this class.',
+            });
+        }
+
         //1. Fetch all assigned problems for this class and populate details & class info
         const classProblems = await ClassProblem.find({class_id: classId})
             .populate('problem_id', 'title problemType difficulty problemUrl')
@@ -209,8 +218,17 @@ exports.getStudentClasses = async (req, res) => {
 exports.getStudentClassProblems = async (req, res) => {
     try {
         const { classId } = req.params;
-        const studentId = req.user._id;
+        const studentId = req.user._id || req.user.id;
         const now = new Date();
+
+        // Verify class membership
+        const isMember = await ClassMember.exists({ classId, userId: studentId });
+        if (!isMember) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. You are not enrolled in this class.',
+            });
+        }
 
         // 1. Fetch ClassProblem documents matching class_id and populate problem_id
         const classProblems = await ClassProblem.find({ class_id: classId })
@@ -296,7 +314,7 @@ exports.getStudentClassProblems = async (req, res) => {
 exports.getStudentProblemDetail = async (req, res) => {
     try {
         const { classProblemId } = req.params;
-        const studentId = req.user._id;
+        const studentId = req.user._id || req.user.id;
 
         // 1. Query ClassProblem by ID and populate problem_id
         const classProblem = await ClassProblem.findById(classProblemId)
@@ -307,6 +325,19 @@ exports.getStudentProblemDetail = async (req, res) => {
             return res.status(404).json({
                 status: 'error',
                 message: 'Assigned problem not found',
+            });
+        }
+
+        // Verify student is enrolled in the parent class
+        const isMember = await ClassMember.exists({ 
+            classId: classProblem.class_id, 
+            userId: studentId 
+        });
+
+        if (!isMember) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. You are not enrolled in this class.',
             });
         }
 
@@ -391,7 +422,7 @@ exports.getStudentSubmissions = async(req, res) => {
             Submission.find(query)
                 .populate({
                     path: 'class_problem_id',
-                    select: 'problem_id class_id, deadline',
+                    select: 'problem_id class_id deadline',
                     populate: [
                         {path: 'problem_id', select: 'title problemType difficulty'},
                         {path: 'class_id', select: 'name'},
