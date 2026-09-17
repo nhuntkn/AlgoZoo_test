@@ -346,7 +346,6 @@ exports.getStudentProblemDetail = async (req, res) => {
             student_id: studentId,
             class_problem_id: classProblem._id,
         })
-            .populate('content_blocks.file_id')
             .populate('reviewed_by', 'fullname')
             .lean();
 
