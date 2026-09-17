@@ -19,6 +19,7 @@ export function ProblemWorkspace() {
   const [content, setContent] = useState('')
   const [language, setLanguage] = useState('Python')
   const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -38,6 +39,31 @@ export function ProblemWorkspace() {
       .catch(() => {})
   }, [problemId, classId])
 
+  // Preview is a blob URL, not a data URL — needs revoking whenever it's replaced or the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (proofPreview) URL.revokeObjectURL(proofPreview)
+    }
+  }, [proofPreview])
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null
+    setProofFile(file)
+    setProofPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous)
+      return file ? URL.createObjectURL(file) : null
+    })
+  }
+
+  const clearProofFile = () => {
+    setProofFile(null)
+    setProofPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous)
+      return null
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const submit = async () => {
     if (!content.trim() || submitting) return
     if (problemType === 'DSA' && !proofFile) {
@@ -47,12 +73,13 @@ export function ProblemWorkspace() {
     setSubmitting(true)
     setError('')
     try {
-      const blocks: Array<{ type: 'code' | 'file'; content?: string; language?: string; file_id?: string; filename?: string }> = [
+      const blocks: Array<{ type: 'code' | 'image' | 'file'; content?: string; language?: string; file_id?: string; filename?: string }> = [
         { type: 'code', content, language },
       ]
       if (proofFile) {
         const uploaded = await uploadFile(proofFile)
-        blocks.push({ type: 'file' as const, file_id: uploaded.data.file_id, filename: uploaded.data.filename })
+        const blockType = proofFile.type.startsWith('image/') ? 'image' : 'file'
+        blocks.push({ type: blockType, file_id: uploaded.data.file_id, filename: uploaded.data.filename })
       }
       await studentService.createSubmission({ class_problem_id: problemId, content_blocks: blocks })
       navigate(`/student/classes/${classId}/problems`)
@@ -274,37 +301,35 @@ export function ProblemWorkspace() {
                 placeholder="Write your solution..."
                 className="w-full border border-gray-200 rounded-xl p-3 font-mono text-sm resize-y focus:outline-none focus:border-accent/60"
               />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".png,.jpg,.jpeg,.gif,.pdf"
-                onChange={(event) => setProofFile(event.target.files?.[0] || null)}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-500 hover:border-accent/50 hover:text-accent"
-              >
-                <FileImage size={16} /> {proofFile ? 'Replace screenshot or file' : 'Add screenshot or solution file'}
-              </button>
-              {proofFile && (
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                  <span className="truncate">{proofFile.name}</span>
-                  <button type="button" onClick={() => { setProofFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}>
+              <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.pdf" onChange={handleFileChange} className="hidden" />
+              {proofPreview ? (
+                <div className="mt-3 relative">
+                  {proofFile?.type === 'application/pdf' ? (
+                    <iframe src={proofPreview} title="PDF preview" className="w-full h-64 rounded-xl border border-gray-200 bg-gray-50" />
+                  ) : (
+                    <img src={proofPreview} alt="Submission preview" className="w-full max-h-48 rounded-xl border border-gray-200 object-contain bg-gray-50" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearProofFile}
+                    className="absolute top-2 right-2 bg-white/90 rounded-full p-1 text-gray-500 hover:text-gray-800 shadow-sm"
+                  >
                     <X size={14} />
                   </button>
+                  <p className="mt-1 text-xs text-gray-500 truncate">{proofFile?.name}</p>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-500 hover:border-accent/50 hover:text-accent"
+                >
+                  <FileImage size={16} /> {proofFile ? 'Replace screenshot or file' : 'Add screenshot or solution file'}
+                </button>
               )}
-              {problemType === 'DSA' && (
-                <p className="mt-2 text-xs text-gray-500">DSA submissions require code plus a screenshot or solution file.</p>
-              )}
+              {problemType === 'DSA' && <p className="mt-2 text-xs text-gray-500">DSA submissions require code plus a screenshot or solution file.</p>}
               {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-              <Button
-                onClick={submit}
-                disabled={!content.trim() || submitting || (problemType === 'DSA' && !proofFile)}
-                className="mt-4 w-full justify-center"
-              >
+              <Button onClick={submit} disabled={!content.trim() || submitting || (problemType === 'DSA' && !proofFile)} className="mt-4 w-full justify-center">
                 <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Solution'}
               </Button>
             </div>
