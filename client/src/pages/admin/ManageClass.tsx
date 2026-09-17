@@ -41,6 +41,10 @@ export function ManageClass() {
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null)
   const [removeSuccess, setRemoveSuccess] = useState<Omit<RemoveTarget, 'id'> | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
+  // fixDoubleSlash
+  function fixDoubleSlash(url: string) {
+  return url.replace(/([^:]\/)\/+/g, '$1')
+}
 
   useEffect(() => {
     const loadClass = async () => {
@@ -98,11 +102,12 @@ export function ManageClass() {
 
     try {
       const data = await adminService.generateJoinLink(classId, role)
-
-      const joinUrl = (data.data as { joinUrl?: string } | undefined)?.joinUrl
-      if (!joinUrl) {
+      const rawJoinUrl = (data.data as { joinUrl?: string } | undefined)?.joinUrl
+      if (!rawJoinUrl) {
         throw new Error('The server did not return an invitation link')
       }
+      const joinUrl = fixDoubleSlash(rawJoinUrl)
+
 
       if (role === 'student') {
         setStudentJoinLink(joinUrl)
