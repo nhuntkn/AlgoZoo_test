@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Users, Loader2, Clock } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
-import { getTrainerClasses, type TrainerClass } from '../../services/classroomService'
+import { ProgressBar } from '../../components/ui/ProgressBar'
+import { getTrainerClasses, getClassDetail, type TrainerClass, type ClassDetail } from '../../services/classroomService'
 
 export function TrainerClasses() {
   const [classes, setClasses] = useState<TrainerClass[]>([])
+  const [details, setDetails] = useState<Record<string, ClassDetail>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,6 +21,22 @@ export function TrainerClasses() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (classes.length === 0) return
+    Promise.all(
+      classes.map(async (c) => {
+        try {
+          const detail = await getClassDetail(String(c.class_id))
+          return [String(c.class_id), detail] as const
+        } catch { return null }
+      })
+    ).then((results) => {
+      const map: Record<string, ClassDetail> = {}
+      results.forEach((r) => { if (r) map[r[0]] = r[1] })
+      setDetails(map)
+    })
+  }, [classes])
 
   return (
     <div>
@@ -40,12 +58,16 @@ export function TrainerClasses() {
           {classes.map((c) => (
             <div key={c.class_id} className="bg-white rounded-2xl shadow-sm p-6 flex items-center justify-between gap-6">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5 mb-3">
+                <div className="flex items-center gap-2.5 mb-1">
                   <h2 className="font-bold text-gray-900 text-lg">{c.className}</h2>
                   <Badge variant={c.is_active ? 'ACTIVE' : 'INACTIVE'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
                 </div>
 
-                <div className="flex items-center gap-4">
+                {details[String(c.class_id)]?.description && (
+                  <p className="text-sm text-gray-400 mb-3">{details[String(c.class_id)].description}</p>
+                )}
+
+                <div className="flex items-center gap-4 mb-3">
                   <div className="flex items-center gap-1.5">
                     <Users size={13} className="text-gray-400" />
                     <span className="text-sm text-gray-500">{c.student_count} students</span>
@@ -57,6 +79,23 @@ export function TrainerClasses() {
                     </div>
                   )}
                 </div>
+
+                {(() => {
+                  const detail = details[String(c.class_id)]
+                  if (!detail) return null
+                  const total = detail.students.length || c.student_count
+                  const submitted = detail.students.filter((s) => s.completed_tasks > 0).length
+                  const percent = total > 0 ? Math.round((submitted / total) * 100) : 0
+                  return (
+                    <div className="max-w-xs">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs text-gray-400">{submitted} / {total} submitted</span>
+                        <span className="text-xs font-semibold text-gray-700">{percent}%</span>
+                      </div>
+                      <ProgressBar value={percent} />
+                    </div>
+                  )
+                })()}
               </div>
 
               <Link to={`/trainer/classes/${c.class_id}/overview`}>

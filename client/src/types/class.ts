@@ -18,6 +18,8 @@ export interface StudentClass {
   description: string
   isActive: boolean
   joinedAt: string
+  totalTrainers: number
+  totalStudents: number
 }
 
 export interface StudentClassesResponse {
