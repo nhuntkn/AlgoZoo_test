@@ -3,9 +3,11 @@ const multer = require("multer");
 
 const upload = require("../middlewares/fileMiddlewares");
 const { isAuthenticatedUser } = require("../middlewares/authMiddleware");
-const { uploadFile } = require("../controllers/fileController");
+const { uploadFile, getFile } = require("../controllers/fileController");
 
 const router = express.Router();
+
+router.get("/:id", isAuthenticatedUser, getFile);
 
 router.post(
   "/",

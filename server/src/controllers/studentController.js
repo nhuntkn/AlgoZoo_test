@@ -13,6 +13,15 @@ exports.getStudentDashboardStats = async (req, res) => {
         const {classId} = req.params;
         const studentId = req.user._id || req.user.id;
 
+        // Verify class membership
+        const isMember = await ClassMember.exists({ classId, userId: studentId });
+        if (!isMember) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. You are not enrolled in this class.',
+            });
+        }
+
         //1. Fetch all assigned problems for this class and populate details & class info
         const classProblems = await ClassProblem.find({class_id: classId})
             .populate('problem_id', 'title problemType difficulty problemUrl')
@@ -147,15 +156,45 @@ exports.getStudentClasses = async (req, res) => {
             .populate('classId', 'name description isActive')
             .lean();
 
-        const classes = memberships
-            .filter((m) => m.classId)
-            .map((m) => ({
-            classId: m.classId._id,
-            name: m.classId.name,
-            description: m.classId.description,
-            isActive: m.classId.isActive,
-            joinedAt: m.createdAt,
-        }));
+        const validMembership = memberships.filter((m) => m.classId)
+        const classIds = validMembership.map((m) =>  m.classId._id);
+
+        // Member roles live on the User model, not on ClassMember, so join to count them in the DB
+        const memberCounts = await ClassMember.aggregate([
+            { $match: { classId: { $in: classIds } } },
+            { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+            { $unwind: '$user' },
+            {
+                $group: {
+                    _id: '$classId',
+                    totalStudents: { $sum: { $cond: [{ $eq: ['$user.role', 'student'] }, 1, 0] } },
+                    totalTrainers: { $sum: { $cond: [{ $eq: ['$user.role', 'trainer'] }, 1, 0] } },
+                },
+            },
+        ]);
+
+        const countMap = new Map();
+        memberCounts.forEach((item) => {
+            countMap.set(item._id.toString(), item);
+        });
+
+        // 3. Format result
+        const classes = validMembership.map((m) => {
+            const counts = countMap.get(m.classId._id.toString()) || {
+                totalStudents: 0,
+                totalTrainers: 0,
+            };
+
+            return {
+                classId: m.classId._id,
+                name: m.classId.name,
+                description: m.classId.description,
+                isActive: m.classId.isActive,
+                joinedAt: m.createdAt,
+                totalStudents: counts.totalStudents,
+                totalTrainers: counts.totalTrainers,
+            };
+        });
 
         return res.status(200).json({
             status: 'success',
@@ -179,7 +218,17 @@ exports.getStudentClasses = async (req, res) => {
 exports.getStudentClassProblems = async (req, res) => {
     try {
         const { classId } = req.params;
-        const studentId = req.user._id;
+        const studentId = req.user._id || req.user.id;
+        const now = new Date();
+
+        // Verify class membership
+        const isMember = await ClassMember.exists({ classId, userId: studentId });
+        if (!isMember) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. You are not enrolled in this class.',
+            });
+        }
 
         // 1. Fetch ClassProblem documents matching class_id and populate problem_id
         const classProblems = await ClassProblem.find({ class_id: classId })
@@ -210,9 +259,28 @@ exports.getStudentClassProblems = async (req, res) => {
         const result = classProblems.map((cp) => {
             const submission = submissionMap.get(cp._id.toString());
 
+            // Countdown calculation
+            let daysLeft = null;
+            let isOverdue = false;
+
+            if (cp.deadline) {
+                const deadlineDate = new Date(cp.deadline);
+                const diffTime = deadlineDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays < 0) {
+                    isOverdue = true;
+                    daysLeft = 'Overdue';
+                } else {
+                    daysLeft = `${diffDays}d`;
+                }
+            }
+
             return {
                 classProblemId: cp._id,
                 deadline: cp.deadline,
+                daysLeft,
+                isOverdue,
                 status: getDisplayStatus(submission),
                 problem: cp.problem_id
                     ? {
@@ -246,7 +314,7 @@ exports.getStudentClassProblems = async (req, res) => {
 exports.getStudentProblemDetail = async (req, res) => {
     try {
         const { classProblemId } = req.params;
-        const studentId = req.user._id;
+        const studentId = req.user._id || req.user.id;
 
         // 1. Query ClassProblem by ID and populate problem_id
         const classProblem = await ClassProblem.findById(classProblemId)
@@ -260,12 +328,24 @@ exports.getStudentProblemDetail = async (req, res) => {
             });
         }
 
+        // Verify student is enrolled in the parent class
+        const isMember = await ClassMember.exists({ 
+            classId: classProblem.class_id, 
+            userId: studentId 
+        });
+
+        if (!isMember) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. You are not enrolled in this class.',
+            });
+        }
+
         // 2. Fetch existing submission matching student_id & class_problem_id
         const submission = await Submission.findOne({
             student_id: studentId,
             class_problem_id: classProblem._id,
         })
-            .populate('content_blocks.file_id')
             .populate('reviewed_by', 'fullname')
             .lean();
 
@@ -308,6 +388,88 @@ exports.getStudentProblemDetail = async (req, res) => {
         });
     }
 };
+
+/**
+ * Get student submissions
+ * GET /api/student/submissions?classId=...&status=...&page=1&limit=15
+ */
+exports.getStudentSubmissions = async(req, res) => {
+    try {
+        const studentId = req.user._id || req.user.id;
+        const {classId, status, page = 1, limit = 15} = req.query;
+
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 15;
+        const skip = (pageNum - 1) * limitNum;
+
+        //construct query filter
+        const query = {student_id: studentId};
+
+        if(status && status.toLowerCase() !== 'all') {
+            query.status = status.toLowerCase();
+        }
+
+        //Filter by classId via ClassProblem IDs if provided
+        if (classId && classId.toLowerCase() !== 'all') {
+            const classProblems = await ClassProblem.find({class_id: classId}).select('_id').lean();
+            const classProblemIds = classProblems.map((cp) => cp._id);
+            query.class_problem_id = {$in: classProblemIds};
+        }
+
+        //Fetch submissions with populated relations
+        const [submissions, totalCount] = await Promise.all([
+            Submission.find(query)
+                .populate({
+                    path: 'class_problem_id',
+                    select: 'problem_id class_id deadline',
+                    populate: [
+                        {path: 'problem_id', select: 'title problemType difficulty'},
+                        {path: 'class_id', select: 'name'},
+                    ],
+                })
+                .sort({createdAt: -1})
+                .skip(skip)
+                .limit(limitNum)
+                .lean(),
+            Submission.countDocuments(query),
+        ]);
+
+        //Format response
+        const formattedSubmissions = submissions.map((sub) => {
+            const classProblem = sub.class_problem_id;
+            const problem = classProblem?.problem_id;
+            const classInfo = classProblem?.class_id;
+
+            return {
+                submissionId: sub._id,
+                classProblemId: classProblem?._id,
+                problemTitle: problem?.title || 'Untitled Problem',
+                problemType: problem?.problemType || null,
+                difficulty: problem?.difficulty || null,
+                className: classInfo?.name || 'Unassigned Class',
+                status: getDisplayStatus(sub),
+                isLate: sub.is_late,
+                submittedAt: sub.createdAt,
+            };
+        });
+
+        return res.status(200).json({
+            status: 'success',
+            data: formattedSubmissions,
+            pagination: {
+                totalItems: totalCount,
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalCount / limitNum),
+            },
+        });
+    } catch (error) {
+        console.error('getStudentSubmissions Error:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'SERVER SIDE ERROR',
+        })
+    }
+}
 
 /**
  * Create or update student submission
