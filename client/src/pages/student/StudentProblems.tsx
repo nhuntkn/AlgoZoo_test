@@ -130,8 +130,4 @@ export function StudentProblems() {
       </div>
     </div>
   )
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> d96b4f5600f620774943785cb2d6e27f419a5d6e
