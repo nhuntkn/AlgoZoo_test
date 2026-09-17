@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { FileText, Code2, ImageIcon, Paperclip, Download, ChevronLeft, ChevronRight, Check, Pencil, Loader2 } from 'lucide-react'
+import { FileText, Code2, ImageIcon, Paperclip, Download, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { useNotifications } from '../../context/NotificationContext'
@@ -126,7 +126,6 @@ export function ReviewSubmission() {
   const [error, setError] = useState<string | null>(null)
 
   const [feedback, setFeedback] = useState('')
-  const [isEditing, setIsEditing] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -139,7 +138,6 @@ export function ReviewSubmission() {
         if (cancelled) return
         setSubmission(s)
         setFeedback(s.feedback ?? '')
-        setIsEditing(s.status !== 'review')
         if (s.problem?.id) {
           getProblemDetail(s.problem.id).then((p) => { if (!cancelled) setProblem(p) }).catch(() => {})
         }
@@ -155,7 +153,6 @@ export function ReviewSubmission() {
     try {
       await reviewSubmission(id, feedback)
       setSubmission((prev) => (prev ? { ...prev, status: 'review', feedback } : prev))
-      setIsEditing(false)
       addNotification({
         recipientRole: 'student',
         type: 'GRADE_RELEASED',
@@ -297,28 +294,21 @@ export function ReviewSubmission() {
             <InfoRow
               label="Status"
               value={
-                done
-                  ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700"><Check size={11} /> Reviewed</span>
-                  : <Badge variant="pending">Pending</Badge>
+                <span className="inline-flex items-center gap-1.5">
+                  {done
+                    ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700"><Check size={11} /> Reviewed</span>
+                    : <Badge variant="pending">Pending</Badge>}
+                  {submission.is_late && <Badge variant="late">Late</Badge>}
+                </span>
               }
             />
           </div>
 
           {/* Feedback */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 text-sm">Feedback</h3>
-              {done && !isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="inline-flex items-center gap-1 text-xs text-accent font-semibold hover:underline"
-                >
-                  <Pencil size={11} /> Edit
-                </button>
-              )}
-            </div>
+            <h3 className="font-semibold text-gray-800 text-sm">Feedback</h3>
 
-            {done && !isEditing ? (
+            {done ? (
               /* Read-only feedback display */
               <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed whitespace-pre-line min-h-[80px]">
                 {feedback || <span className="text-gray-400 italic">No feedback written.</span>}
@@ -334,7 +324,7 @@ export function ReviewSubmission() {
               />
             )}
 
-            {done && !isEditing ? null : (
+            {done ? null : (
               <>
                 <Button
                   variant="success"
@@ -342,21 +332,11 @@ export function ReviewSubmission() {
                   onClick={() => void handleMarkReviewed()}
                   disabled={saving || !feedback.trim()}
                 >
-                  {saving ? 'Saving...' : done ? 'Save Changes' : 'Mark as Reviewed'}
+                  {saving ? 'Saving...' : 'Mark as Reviewed'}
                 </Button>
-                {done && (
-                  <button
-                    onClick={() => { setIsEditing(false); setFeedback(submission.feedback ?? '') }}
-                    className="w-full text-xs text-center text-gray-400 hover:text-gray-600"
-                  >
-                    Cancel
-                  </button>
-                )}
-                {!done && (
-                  <p className="text-xs text-center text-gray-400">
-                    Student sees feedback after you mark as reviewed.
-                  </p>
-                )}
+                <p className="text-xs text-center text-gray-400">
+                  Student sees feedback after you mark as reviewed.
+                </p>
               </>
             )}
           </div>

@@ -421,8 +421,7 @@ export function ClassProblems() {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={(e) => { e.stopPropagation(); toggleProblem(p) }}
-                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleProblem(p)}
                             className="accent-red-600 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
