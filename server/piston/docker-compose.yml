@@ -20,3 +20,12 @@ services:
       - ./piston_data/packages:/piston/packages
     tmpfs:
       - /piston/jobs:exec
+    environment:
+      # Piston's default output_max_size is 1024 bytes per stdio buffer. The Python
+      # tracer harness (server/src/utils/pythonTracer.js) prints the entire step-by-step
+      # trace as one JSON blob, which blows past that for anything beyond a few
+      # straight-line statements — Piston silently kills the sandbox ("stdout length
+      # exceeded" in its own logs), which surfaces to us as a confusing
+      # "Sandbox keeper received fatal signal 6" crash. Raise it well above the
+      # tracer's own worst-case bound (MAX_STEPS=500 * MAX_HEAP_OBJECTS=150).
+      - PISTON_OUTPUT_MAX_SIZE=8388608
