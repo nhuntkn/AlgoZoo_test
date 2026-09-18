@@ -18,6 +18,25 @@ function maxFrameCount(trace) {
   return Math.max(...trace.steps.map((s) => s.frames.length));
 }
 
+// Collects every heap snapshot of a list of the given length across all steps, as arrays
+// of raw values — used to confirm a container's *mutation over time* was actually
+// captured, not just its final state (the whole point of visualizing an in-place sort).
+function listSnapshots(trace, len) {
+  const snaps = [];
+  for (const step of trace.steps) {
+    for (const entry of Object.values(step.heap)) {
+      if (entry.type === 'list' && entry.items.length === len) {
+        snaps.push(JSON.stringify(entry.items.map((it) => it.value)));
+      }
+    }
+  }
+  return snaps;
+}
+
+function hasHeapType(trace, type) {
+  return trace.steps.some((s) => Object.values(s.heap).some((entry) => entry.type === type));
+}
+
 const CASES = [
   {
     name: 'straight-line',
@@ -68,6 +87,58 @@ const CASES = [
       const hasNodeInHeap = trace.steps.some((s) => Object.values(s.heap).some((entry) => entry.type === 'Node'));
       if (!hasNodeInHeap) throw new Error('expected at least one Node object to appear in the heap');
       if (trace.stdout.trim() !== '3') throw new Error(`expected stdout '3' (reversed head.val), got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'bubble-sort',
+    code:
+      'def bubble_sort(arr):\n    n = len(arr)\n    for i in range(n):\n        for j in range(0, n - i - 1):\n            if arr[j] > arr[j + 1]:\n                arr[j], arr[j + 1] = arr[j + 1], arr[j]\n    return arr\n\n' +
+      'print(bubble_sort([5, 2, 4, 1, 3]))\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (trace.stdout.trim() !== '[1, 2, 3, 4, 5]') throw new Error(`expected sorted output, got ${JSON.stringify(trace.stdout)}`);
+      const snaps = listSnapshots(trace, 5);
+      const distinct = new Set(snaps);
+      if (distinct.size < 2) throw new Error(`expected the array to visibly change across steps, got ${distinct.size} distinct snapshot(s)`);
+      if (snaps[snaps.length - 1] !== JSON.stringify([1, 2, 3, 4, 5])) {
+        throw new Error(`expected final array snapshot to be sorted, got ${snaps[snaps.length - 1]}`);
+      }
+    },
+  },
+  {
+    name: 'binary-search',
+    code:
+      'def binary_search(arr, target, lo, hi):\n    if lo > hi:\n        return -1\n    mid = (lo + hi) // 2\n    if arr[mid] == target:\n        return mid\n    elif arr[mid] < target:\n        return binary_search(arr, target, mid + 1, hi)\n    else:\n        return binary_search(arr, target, lo, mid - 1)\n\n' +
+      'nums = [1, 3, 5, 7, 9, 11, 13]\nprint(binary_search(nums, 11, 0, len(nums) - 1))\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 3) throw new Error(`expected multiple nested binary_search frames, got max ${maxFrameCount(trace)} frame(s)`);
+      if (trace.stdout.trim() !== '5') throw new Error(`expected stdout '5' (index of 11), got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'graph-bfs',
+    code:
+      'def bfs(graph, start):\n    visited = {start}\n    order = []\n    queue = [start]\n    while queue:\n        node = queue.pop(0)\n        order.append(node)\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append(neighbor)\n    return order\n\n' +
+      "graph = {'A': ['B', 'C'], 'B': ['A', 'D'], 'C': ['A', 'D'], 'D': ['B', 'C']}\nprint(bfs(graph, 'A'))\n",
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (trace.stdout.trim() !== "['A', 'B', 'C', 'D']") throw new Error(`expected BFS order, got ${JSON.stringify(trace.stdout)}`);
+      if (!hasHeapType(trace, 'dict')) throw new Error('expected the adjacency-list dict to appear in the heap');
+      if (!hasHeapType(trace, 'set')) throw new Error('expected the visited set to appear in the heap');
+    },
+  },
+  {
+    name: 'binary-tree-inorder',
+    code:
+      'class TreeNode:\n    def __init__(self, val, left=None, right=None):\n        self.val = val\n        self.left = left\n        self.right = right\n\n' +
+      'def inorder(node, result):\n    if node is None:\n        return\n    inorder(node.left, result)\n    result.append(node.val)\n    inorder(node.right, result)\n\n' +
+      'root = TreeNode(2, TreeNode(1), TreeNode(3))\nresult = []\ninorder(root, result)\nprint(result)\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 3) throw new Error(`expected nested inorder() recursion, got max ${maxFrameCount(trace)} frame(s)`);
+      if (!hasHeapType(trace, 'TreeNode')) throw new Error('expected TreeNode objects to appear in the heap');
+      if (trace.stdout.trim() !== '[1, 2, 3]') throw new Error(`expected in-order traversal, got ${JSON.stringify(trace.stdout)}`);
     },
   },
   {
