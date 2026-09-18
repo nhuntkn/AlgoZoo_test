@@ -1,0 +1,16 @@
+{
+  "run": {
+    "signal": "SIGKILL",
+    "stdout": "",
+    "stderr": "Sandbox keeper received fatal signal 6\n",
+    "code": null,
+    "output": "Sandbox keeper received fatal signal 6\n",
+    "memory": 11108000,
+    "message": "stdout length exceeded",
+    "status": "OL",
+    "cpu_time": 52,
+    "wall_time": 567
+  },
+  "language": "python",
+  "version": "3.11.0"
+}

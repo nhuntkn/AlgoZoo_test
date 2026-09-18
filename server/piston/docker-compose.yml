@@ -1,0 +1,22 @@
+# Self-hosted Piston (code execution engine) backing the "Run Code" feature.
+# The public Piston API now requires a whitelist, so this replaces it for local/dev use.
+#
+# Setup:
+#   1. docker compose -f server/piston/docker-compose.yml up -d
+#   2. Install the language runtimes you need, e.g.:
+#        curl -X POST http://localhost:2000/api/v2/packages \
+#          -H "Content-Type: application/json" \
+#          -d '{"language":"python","version":"3.12.0"}'
+#      Run `curl http://localhost:2000/api/v2/packages` to see available language/version pairs.
+#   3. server/.env already points PISTON_API_URL at http://localhost:2000/api/v2
+services:
+  api:
+    image: ghcr.io/engineer-man/piston
+    restart: always
+    privileged: true
+    ports:
+      - "2000:2000"
+    volumes:
+      - ./piston_data/packages:/piston/packages
+    tmpfs:
+      - /piston/jobs:exec

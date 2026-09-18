@@ -1,7 +1,12 @@
 const mongoose = require('mongoose'); 
+const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema(
   {
+    fullname: {
+      required: [true, 'Full name is required'],
+      type: String,
+    },
     email: {
       required: [true, 'Email is required'],
       type: String,
@@ -15,24 +20,30 @@ const UserSchema = new mongoose.Schema(
       minLength: [6, 'Password must be at least 6 characters'],
       select: false,
     }, 
-    avatarUrl:  {
-      type: String,
+    isActive: {
+      type: Boolean,
+      default: true,
     },
     role: {
       type: String,
       enum: ['student','trainer' ,'admin'],
       default: 'student',
     },
-    status: {
-      type: String,
-      enum: ['login', 'logout'],
-      default: null
-    },
   },
   { timestamps: true } // This automatically adds createdAt and updatedAt
 );
 
-UserSchema.methods.comparePassword = function (password) {
-  return password === this.password;
+
+
+// Hash password before saving the document
+UserSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  this.password = await bcrypt.hash(this.password, 8);
+});
+
+// Compare passwords
+UserSchema.methods.comparePassword = async function (password) {
+  return bcrypt.compare(password, this.password);
 };
+
 module.exports = mongoose.model('User', UserSchema);

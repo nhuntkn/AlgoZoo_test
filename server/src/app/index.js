@@ -9,6 +9,11 @@ const path = require('path');
 // imports application middleware and routes
 const authRoute = require('../routes/authRoutes');
 const adminRoute = require('../routes/adminRoutes');
+const trainerRoute = require('../routes/trainerRoutes');
+const problemRoute = require('../routes/problemRoutes');
+const classRoute = require('../routes/classRoutes');
+const studentRoute = require('../routes/studentRoutes');
+const executionRoute = require('../routes/executionRoutes');
 
 // initialize express app
 const app = express();
@@ -22,7 +27,7 @@ app.use(cookieParser());
 
 app.use(
     cors({
-      origin: ["http://localhost:4200", "http://localhost:8473"],
+      origin: ["http://localhost:5173","http://localhost:5174"],
       credentials: true,
     })
   );
@@ -35,5 +40,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // sets application API's routes
 app.use('/api', authRoute); // auth routes
 app.use('/api', adminRoute); // admin routes
+app.use('/api', trainerRoute); // trainer routes
+app.use('/api', problemRoute); // problem bank routes
+app.use('/api/classes', classRoute); // class routes
+app.use('/api/student', studentRoute); //student routes
+app.use('/api/execution', executionRoute); //code execution (run) routes
 
 module.exports=app
