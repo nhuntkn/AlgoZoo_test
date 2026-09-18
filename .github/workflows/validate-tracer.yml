@@ -54,6 +54,16 @@ jobs:
           PISTON_API_URL: http://localhost:2000/api/v2
         run: node scripts/validate-tracer.js
 
+      - name: Dump Piston/isolate diagnostics
+        if: always()
+        run: |
+          echo "--- cgroup filesystem type (cgroup2fs = pure cgroup v2) ---"
+          stat -fc %T /sys/fs/cgroup || true
+          echo "--- cgroup controllers available at root ---"
+          cat /sys/fs/cgroup/cgroup.controllers || true
+          echo "--- piston container logs (full) ---"
+          docker logs $(docker ps -aq --filter "name=piston") || true
+
       - name: Upload trace samples
         if: always()
         uses: actions/upload-artifact@v4
