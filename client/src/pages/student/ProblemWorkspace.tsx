@@ -2,13 +2,25 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   CheckCircle2, ChevronLeft, ChevronRight, Clock,
-  Code2, ExternalLink, FileImage, FileText, Loader2, MessageSquare, Send, X,
+  Code2, Eye, ExternalLink, FileImage, FileText, Loader2, MessageSquare, Play, Send, Terminal, X,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { CodeEditor } from '../../components/ui/CodeEditor'
+import { TraceVisualizer } from '../../components/problem/TraceVisualizer'
 import { useAuth } from '../../hooks/useAuth'
 import { studentService } from '../../services/studentService'
+import { executionService } from '../../services/executionService'
 import { uploadFile } from '../../services/fileService'
 import type { StudentProblemDetail } from '../../types/classProblem'
+import type { RunCodeResult, TraceResult } from '../../types/execution'
+
+const MONACO_LANGUAGE_MAP: Record<string, string> = {
+  Python: 'python',
+  JavaScript: 'javascript',
+  Java: 'java',
+  'C++': 'cpp',
+  TypeScript: 'typescript',
+}
 
 export function ProblemWorkspace() {
   const { classId = '', problemId = '' } = useParams()
@@ -24,6 +36,14 @@ export function ProblemWorkspace() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [running, setRunning] = useState(false)
+  const [runResult, setRunResult] = useState<RunCodeResult | null>(null)
+  const [runError, setRunError] = useState('')
+  const [lastSuccessfulRun, setLastSuccessfulRun] = useState<{ code: string; language: string } | null>(null)
+  const [visualizing, setVisualizing] = useState(false)
+  const [traceResult, setTraceResult] = useState<TraceResult | null>(null)
+  const [tracedCode, setTracedCode] = useState<string | null>(null)
+  const [traceError, setTraceError] = useState('')
 
   useEffect(() => {
     studentService.getProblem(problemId)
@@ -62,6 +82,41 @@ export function ProblemWorkspace() {
       return null
     })
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleRun = async () => {
+    if (!content.trim() || running) return
+    setRunning(true)
+    setRunError('')
+    setRunResult(null)
+    try {
+      const response = await executionService.run({ language, code: content })
+      setRunResult(response.data)
+      const succeeded = response.data.exitCode === 0 && !response.data.stderr && !response.data.compile?.stderr
+      setLastSuccessfulRun(succeeded ? { code: content, language } : null)
+    } catch (requestError) {
+      setRunError(requestError instanceof Error ? requestError.message : 'Unable to run code')
+      setLastSuccessfulRun(null)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const canVisualize = language === 'Python' && lastSuccessfulRun?.code === content && lastSuccessfulRun?.language === language
+
+  const handleVisualize = async () => {
+    if (!canVisualize || visualizing) return
+    setVisualizing(true)
+    setTraceError('')
+    try {
+      const response = await executionService.trace({ code: content })
+      setTraceResult(response.data)
+      setTracedCode(content)
+    } catch (requestError) {
+      setTraceError(requestError instanceof Error ? requestError.message : 'Unable to visualize code')
+    } finally {
+      setVisualizing(false)
+    }
   }
 
   const submit = async () => {
@@ -294,13 +349,66 @@ export function ProblemWorkspace() {
                 <option>C++</option>
                 <option>TypeScript</option>
               </select>
-              <textarea
+              <CodeEditor
                 value={content}
-                onChange={(event) => setContent(event.target.value)}
-                rows={12}
-                placeholder="Write your solution..."
-                className="w-full border border-gray-200 rounded-xl p-3 font-mono text-sm resize-y focus:outline-none focus:border-accent/60"
+                onChange={setContent}
+                language={MONACO_LANGUAGE_MAP[language] || 'plaintext'}
               />
+              <div className="flex items-center gap-2 mt-3">
+                <Button type="button" variant="secondary" size="sm" onClick={handleRun} disabled={!content.trim() || running}>
+                  {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                  {running ? 'Running...' : 'Run Code'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleVisualize}
+                  disabled={!canVisualize || visualizing}
+                  title={
+                    language !== 'Python'
+                      ? 'Visualization is available for Python only'
+                      : !canVisualize
+                        ? 'Run your code successfully first'
+                        : undefined
+                  }
+                >
+                  {visualizing ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+                  {visualizing ? 'Visualizing...' : 'Visualize'}
+                </Button>
+              </div>
+              {language !== 'Python' && (
+                <p className="mt-2 text-xs text-gray-400">Step-by-step visualization is available for Python only, for now.</p>
+              )}
+              {runError && <p className="mt-2 text-sm text-red-600">{runError}</p>}
+              {runResult && (
+                <div className="mt-3 rounded-xl overflow-hidden bg-[#1e1e2e] text-sm font-mono">
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+                    <div className="flex items-center gap-1.5">
+                      <Terminal size={13} className="text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Output</span>
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      {runResult.language} {runResult.version} · exit {runResult.exitCode ?? '—'}
+                    </span>
+                  </div>
+                  {runResult.compile?.stderr && (
+                    <pre className="px-4 pt-3 text-amber-300 whitespace-pre-wrap break-words">{runResult.compile.stderr}</pre>
+                  )}
+                  <pre className="px-4 py-3 text-gray-100 whitespace-pre-wrap break-words">
+                    {runResult.stdout || <span className="text-gray-500">(no output)</span>}
+                  </pre>
+                  {runResult.stderr && (
+                    <pre className="px-4 pb-3 text-red-400 whitespace-pre-wrap break-words">{runResult.stderr}</pre>
+                  )}
+                </div>
+              )}
+              {traceError && <p className="mt-3 text-sm text-red-600">{traceError}</p>}
+              {traceResult && tracedCode === content && (
+                <div className="mt-3">
+                  <TraceVisualizer code={content} trace={traceResult} />
+                </div>
+              )}
               <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.pdf" onChange={handleFileChange} className="hidden" />
               {proofPreview ? (
                 <div className="mt-3 relative">

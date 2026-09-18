@@ -13,6 +13,7 @@ const trainerRoute = require('../routes/trainerRoutes');
 const problemRoute = require('../routes/problemRoutes');
 const classRoute = require('../routes/classRoutes');
 const studentRoute = require('../routes/studentRoutes');
+const executionRoute = require('../routes/executionRoutes');
 
 // initialize express app
 const app = express();
@@ -43,5 +44,6 @@ app.use('/api', trainerRoute); // trainer routes
 app.use('/api', problemRoute); // problem bank routes
 app.use('/api/classes', classRoute); // class routes
 app.use('/api/student', studentRoute); //student routes
+app.use('/api/execution', executionRoute); //code execution (run) routes
 
 module.exports=app

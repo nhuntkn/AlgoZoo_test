@@ -26,5 +26,6 @@ client/.env
 # Backend
 server/.env
 server/uploads/
+server/piston/piston_data/
 build/
 dist/
