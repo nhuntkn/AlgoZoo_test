@@ -197,33 +197,32 @@ export function ProblemWorkspace() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">{problem.title}</h1>
 
       {/* Main layout */}
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_300px] gap-5">
-        {/* Left: problem card + my solution */}
-        <div className="space-y-4">
-          {/* Problem card */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <FileText size={13} className="text-gray-400 flex-shrink-0" />
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Problem</span>
-              <span className="text-sm font-semibold text-gray-700">{problem.title}</span>
-            </div>
-            <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-              {problem.description || 'No description available.'}
-            </div>
-            {problem.problemUrl && (
-              <a
-                href={problem.problemUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 mt-5 text-sm text-accent hover:underline"
-              >
-                View resource <ExternalLink size={13} />
-              </a>
-            )}
+      <div className="space-y-5">
+        {/* Problem card - full width */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText size={13} className="text-gray-400 flex-shrink-0" />
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Problem</span>
+            <span className="text-sm font-semibold text-gray-700">{problem.title}</span>
           </div>
+          <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+            {problem.description || 'No description available.'}
+          </div>
+          {problem.problemUrl && (
+            <a
+              href={problem.problemUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 mt-5 text-sm text-accent hover:underline"
+            >
+              View resource <ExternalLink size={13} />
+            </a>
+          )}
+        </div>
 
-          {/* My Solution (when submitted) */}
-          {submitted && submission && (
+        {submitted && submission ? (
+          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-5">
+            {/* My Solution */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
                 <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -260,14 +259,9 @@ export function ProblemWorkspace() {
                 </div>
               ))}
             </div>
-          )}
-        </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-4">
-          {submitted && submission ? (
-            <>
-              {/* Submission Info */}
+            {/* Submission Info + Feedback */}
+            <div className="space-y-4">
               <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4 text-sm">
                 <h3 className="font-semibold text-gray-900">Submission Info</h3>
                 <div>
@@ -330,11 +324,12 @@ export function ProblemWorkspace() {
                   <p className="text-gray-700 leading-relaxed">{submission.feedback}</p>
                 </div>
               )}
-            </>
-          ) : (
-            /* Submit Solution form */
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h2 className="font-bold text-gray-900 mb-1">Submit Solution</h2>
+            </div>
+          </div>
+        ) : (
+          /* Submit Solution form - full width */
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="font-bold text-gray-900 mb-1">Submit Solution</h2>
               <p className="text-xs text-gray-400 mb-4">
                 Deadline: {detail.deadline ? new Date(detail.deadline).toLocaleString() : 'No deadline'}
               </p>
@@ -441,8 +436,7 @@ export function ProblemWorkspace() {
                 <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Solution'}
               </Button>
             </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )

@@ -7,12 +7,12 @@ interface TraceVisualizerProps {
   trace: TraceResult
 }
 
-const ROW_H = 22
-const HEADER_H = 24
+const ROW_H = 26
+const HEADER_H = 28
 const FRAME_X = 16
-const FRAME_W = 220
-const FRAME_GAP = 14
-const BOX_W = 170
+const FRAME_W = 240
+const FRAME_GAP = 16
+const BOX_W = 190
 const BOX_GAP_X = 36
 const BOX_GAP_Y = 36
 const MAX_HEAP_COLS = 3
@@ -207,12 +207,12 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     frameEls.push(
       <g key={`frame-${fi}`}>
         <rect x={FRAME_X} y={y} width={FRAME_W} height={height} rx={10} fill={isActive ? '#ecebfd' : 'white'} stroke={isActive ? '#5750e8' : '#e5e7eb'} />
-        <text x={FRAME_X + 10} y={y + 15} fontSize={10.5} fontWeight={700} fill="#6b7280" letterSpacing="0.03em">
+        <text x={FRAME_X + 10} y={y + 17} fontSize={12} fontWeight={700} fill="#6b7280" letterSpacing="0.03em">
           {frame.fn.toUpperCase()}
         </text>
         <line x1={FRAME_X} y1={y + HEADER_H} x2={FRAME_X + FRAME_W} y2={y + HEADER_H} stroke="#e5e7eb" />
         {frame.vars.length === 0 ? (
-          <text x={FRAME_X + 12} y={y + HEADER_H + 15} fontSize={11} fontStyle="italic" fill="#9ca3af">
+          <text x={FRAME_X + 12} y={y + HEADER_H + 17} fontSize={12.5} fontStyle="italic" fill="#9ca3af">
             no locals
           </text>
         ) : (
@@ -226,13 +226,13 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
             }
             return (
               <g key={name}>
-                <text x={FRAME_X + 12} y={midY} fontSize={12} fill="#374151">
+                <text x={FRAME_X + 12} y={midY} fontSize={13.5} fill="#374151">
                   {name}
                 </text>
                 {v.kind === 'ref' ? (
                   <circle cx={FRAME_X + FRAME_W - 10} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
                 ) : (
-                  <text x={FRAME_X + FRAME_W - 12} y={midY} fontSize={11} fill="#9ca3af" textAnchor="end" fontStyle="italic">
+                  <text x={FRAME_X + FRAME_W - 12} y={midY} fontSize={12.5} fill="#9ca3af" textAnchor="end" fontStyle="italic">
                     {formatPrimitive(v.value)}
                   </text>
                 )}
@@ -256,7 +256,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     heapEls.push(
       <g key={id}>
         <rect x={pos.x} y={pos.y} width={BOX_W} height={height} rx={10} fill="#f8f9fb" stroke="#e5e7eb" />
-        <text x={pos.x + 10} y={pos.y + 15} fontSize={9.5} fontWeight={700} fill="#9ca3af" letterSpacing="0.03em">
+        <text x={pos.x + 10} y={pos.y + 17} fontSize={11} fontWeight={700} fill="#9ca3af" letterSpacing="0.03em">
           {entry.type.toUpperCase()}
         </text>
         <line x1={pos.x} y1={pos.y + HEADER_H} x2={pos.x + BOX_W} y2={pos.y + HEADER_H} stroke="#e5e7eb" />
@@ -266,7 +266,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
 
           if (row.text !== undefined) {
             return (
-              <text key={ri} x={pos.x + 10} y={midY} fontSize={10.5} fill="#9ca3af" fontStyle="italic">
+              <text key={ri} x={pos.x + 10} y={midY} fontSize={12} fill="#9ca3af" fontStyle="italic">
                 {row.text}
               </text>
             )
@@ -284,13 +284,13 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
 
           return (
             <g key={ri}>
-              <text x={pos.x + 10} y={midY} fontSize={11} fill="#374151">
+              <text x={pos.x + 10} y={midY} fontSize={12.5} fill="#374151">
                 {row.label}
               </text>
               {isRef ? (
                 <circle cx={exitLeft ? pos.x + 6 : pos.x + BOX_W - 6} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
               ) : row.value && row.value.kind === 'value' ? (
-                <text x={pos.x + BOX_W - 10} y={midY} fontSize={10.5} fill="#9ca3af" textAnchor="end" fontStyle="italic">
+                <text x={pos.x + BOX_W - 10} y={midY} fontSize={12} fill="#9ca3af" textAnchor="end" fontStyle="italic">
                   {formatPrimitive(row.value.value)}
                 </text>
               ) : null}
@@ -324,26 +324,27 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     <div className="space-y-3">
       <TraceBanners trace={trace} />
 
-      <div className="bg-[#1e1e2e] rounded-xl overflow-hidden">
+      <div className="grid lg:grid-cols-2 gap-3 items-start">
+      <div className="lg:order-2 bg-[#1e1e2e] rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Code</span>
           <span className="text-xs text-gray-400">{eventTag}</span>
         </div>
-        <div className="py-1 max-h-72 overflow-y-auto">
+        <div className="py-1 max-h-[520px] overflow-y-auto">
           {codeLines.map((line, i) => {
             const lineNo = i + 1
             const active = lineNo === step.line
             return (
-              <div key={i} className={`flex gap-3 px-4 py-0.5 border-l-2 ${active ? 'bg-accent/20 border-accent' : 'border-transparent'}`}>
-                <span className="text-gray-500 text-xs w-5 text-right flex-none font-mono">{lineNo}</span>
-                <span className="text-gray-100 text-xs font-mono whitespace-pre">{line || ' '}</span>
+              <div key={i} className={`flex gap-3 px-4 py-1 border-l-2 ${active ? 'bg-accent/20 border-accent' : 'border-transparent'}`}>
+                <span className="text-gray-500 text-sm w-6 text-right flex-none font-mono">{lineNo}</span>
+                <span className="text-gray-100 text-sm font-mono whitespace-pre">{line || ' '}</span>
               </div>
             )
           })}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
+      <div className="lg:order-1 lg:col-span-2 bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
         <button
           type="button"
           onClick={() => {
@@ -389,7 +390,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
         </span>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="lg:order-3 bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Memory</span>
           <button
@@ -402,6 +403,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
           </button>
         </div>
         <div className="p-3 overflow-x-auto">{diagramSvg}</div>
+      </div>
       </div>
 
       {expanded && (
