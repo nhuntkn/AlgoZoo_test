@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ChevronLeft, ChevronRight, Info, Pause, Play, Terminal } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Info, Maximize2, Minimize2, Pause, Play, Terminal } from 'lucide-react'
 import type { TraceFrame, TraceHeapEntry, TraceResult, TraceValue } from '../../types/execution'
 
 interface TraceVisualizerProps {
@@ -15,7 +15,7 @@ const FRAME_GAP = 14
 const BOX_W = 170
 const BOX_GAP_X = 36
 const BOX_GAP_Y = 36
-const HEAP_COLS = 3
+const MAX_HEAP_COLS = 3
 const HEAP_ORIGIN_X = FRAME_X + FRAME_W + 60
 const HEAP_ORIGIN_Y = 20
 const MAX_ROWS_SHOWN = 5
@@ -95,9 +95,22 @@ function TraceBanners({ trace }: { trace: TraceResult }) {
 export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const codeLines = useMemo(() => code.split('\n'), [code])
   const steps = trace.steps
+
+  // Reserving a fixed 3-column grid regardless of how many heap objects actually exist
+  // wastes width on simple traces (e.g. just a list and a dict), shrinking everything more
+  // than necessary once scaled to fit the container. Size the grid to what's actually there.
+  const totalHeapObjects = useMemo(() => {
+    const ids = new Set<string>()
+    for (const step of steps) {
+      for (const id of Object.keys(step.heap)) ids.add(id)
+    }
+    return ids.size
+  }, [steps])
+  const heapCols = Math.max(1, Math.min(MAX_HEAP_COLS, totalHeapObjects))
 
   // Stable heap layout: each object id gets a permanent grid slot the first time it appears,
   // so boxes never move once placed even as later steps add/remove reachable objects.
@@ -107,17 +120,16 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     for (const step of steps) {
       for (const id of Object.keys(step.heap)) {
         if (!(id in layout)) {
-          layout[id] = { col: index % HEAP_COLS, row: Math.floor(index / HEAP_COLS) }
+          layout[id] = { col: index % heapCols, row: Math.floor(index / heapCols) }
           index += 1
         }
       }
     }
     return layout
-  }, [steps])
+  }, [steps, heapCols])
 
   const boxHeight = 132
-  const totalHeapObjects = Object.keys(heapLayout).length
-  const heapGridRows = Math.max(1, Math.ceil(totalHeapObjects / HEAP_COLS))
+  const heapGridRows = Math.max(1, Math.ceil(totalHeapObjects / heapCols))
   const heapGridHeight = heapGridRows * boxHeight + (heapGridRows - 1) * BOX_GAP_Y
 
   const maxFrameColumnHeight = useMemo(() => {
@@ -132,7 +144,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     return max
   }, [steps])
 
-  const viewBoxWidth = HEAP_ORIGIN_X + HEAP_COLS * BOX_W + (HEAP_COLS - 1) * BOX_GAP_X + 20
+  const viewBoxWidth = HEAP_ORIGIN_X + heapCols * BOX_W + (heapCols - 1) * BOX_GAP_X + 20
   const viewBoxHeight = Math.max(maxFrameColumnHeight, heapGridHeight, 160) + 20
 
   useEffect(() => {
@@ -148,6 +160,15 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     }, PLAY_INTERVAL_MS)
     return () => clearInterval(id)
   }, [playing, steps.length])
+
+  useEffect(() => {
+    if (!expanded) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [expanded])
 
   if (!steps.length) {
     return <TraceBanners trace={trace} />
@@ -282,6 +303,23 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
 
   const eventTag = step.event === 'call' ? '→ call' : step.event === 'return' ? '← return' : ''
 
+  const diagramSvg = (
+    <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full" style={{ minWidth: 480 }}>
+      <defs>
+        <marker id="tv-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#5750e8" />
+        </marker>
+      </defs>
+      <g>{frameEls}</g>
+      <g>{heapEls}</g>
+      <g fill="none" stroke="#5750e8" strokeWidth={1.6}>
+        {arrows.map((a, i) => (
+          <path key={i} d={a.d} markerEnd="url(#tv-arrow)" />
+        ))}
+      </g>
+    </svg>
+  )
+
   return (
     <div className="space-y-3">
       <TraceBanners trace={trace} />
@@ -352,24 +390,46 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider">Memory</div>
-        <div className="p-3 overflow-x-auto">
-          <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full" style={{ minWidth: 480 }}>
-            <defs>
-              <marker id="tv-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M0 0 L10 5 L0 10 z" fill="#5750e8" />
-              </marker>
-            </defs>
-            <g>{frameEls}</g>
-            <g>{heapEls}</g>
-            <g fill="none" stroke="#5750e8" strokeWidth={1.6}>
-              {arrows.map((a, i) => (
-                <path key={i} d={a.d} markerEnd="url(#tv-arrow)" />
-              ))}
-            </g>
-          </svg>
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Memory</span>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            title="Expand"
+            className="text-gray-400 hover:text-accent transition-colors"
+          >
+            <Maximize2 size={14} />
+          </button>
         </div>
+        <div className="p-3 overflow-x-auto">{diagramSvg}</div>
       </div>
+
+      {expanded && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6"
+          onClick={() => setExpanded(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full h-full max-w-6xl overflow-auto p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-700">
+                Memory — Step {stepIndex + 1} / {steps.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                title="Close"
+                className="text-gray-400 hover:text-accent transition-colors"
+              >
+                <Minimize2 size={16} />
+              </button>
+            </div>
+            {diagramSvg}
+          </div>
+        </div>
+      )}
 
       <div className="bg-[#1e1e2e] rounded-xl overflow-hidden">
         <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/10">
