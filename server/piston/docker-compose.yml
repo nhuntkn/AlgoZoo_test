@@ -39,4 +39,11 @@ services:
       # write/read plus ptrace overhead, nested inside Piston's own sandboxing, so it's
       # meaningfully slower than native execution. Raise generously.
       - PISTON_RUN_TIMEOUT=15000
+      # Default max_process_count is 64 per job, which should already be generous, but
+      # the C++ tracer needs at least 3 live processes at once (the driver itself, gdb,
+      # and the debuggee gdb spawns) — set explicitly as a safety margin, since an
+      # intermittent near-instant kill with very little CPU time used (rather than a
+      # slow-but-progressing timeout) is a symptom more consistent with a process/resource
+      # ceiling than a genuine timeout.
+      - PISTON_MAX_PROCESS_COUNT=128
 
