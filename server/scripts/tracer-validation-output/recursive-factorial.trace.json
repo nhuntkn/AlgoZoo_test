@@ -1,0 +1,1001 @@
+{
+  "steps": [
+    {
+      "line": 0,
+      "event": "call",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 0,
+          "vars": []
+        }
+      ],
+      "heap": {}
+    },
+    {
+      "line": 1,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 1,
+          "vars": []
+        }
+      ],
+      "heap": {}
+    },
+    {
+      "line": 6,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 1,
+      "event": "call",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 1,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 2,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 2,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 4,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 1,
+      "event": "call",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 1,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 2,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 2,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 4,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 1,
+      "event": "call",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 1,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 2,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 2,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 4,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 1,
+      "event": "call",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 1,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 1
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 2,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 2,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 1
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 3,
+      "event": "line",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 3,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 1
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 3,
+      "event": "return",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 3,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 1
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 4,
+      "event": "return",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 2
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 4,
+      "event": "return",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 3
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 4,
+      "event": "return",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        },
+        {
+          "fn": "factorial",
+          "line": 4,
+          "vars": [
+            [
+              "n",
+              {
+                "kind": "value",
+                "value": 4
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    },
+    {
+      "line": 6,
+      "event": "return",
+      "frames": [
+        {
+          "fn": "<module>",
+          "line": 6,
+          "vars": [
+            [
+              "factorial",
+              {
+                "kind": "ref",
+                "id": "9694119227968"
+              }
+            ]
+          ]
+        }
+      ],
+      "heap": {
+        "9694119227968": {
+          "type": "function",
+          "fields": []
+        }
+      }
+    }
+  ],
+  "stdout": "24\n",
+  "truncated": false,
+  "error": null
+}
