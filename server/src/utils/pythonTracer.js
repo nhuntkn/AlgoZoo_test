@@ -50,12 +50,14 @@ def _is_opaque_callable(v):
 
 
 def _opaque_label(v):
-    name = getattr(v, "__name__", None) or repr(v)
+    # No name here on purpose: the variable holding it is almost always named the
+    # same thing (def foo(): ... binds foo to itself), and repeating a long name next
+    # to itself in a narrow box just makes the two overlap and become unreadable.
     if isinstance(v, type):
-        return "<class %s>" % name
+        return "<class>"
     if isinstance(v, types.ModuleType):
-        return "<module %s>" % name
-    return "<function %s>" % name
+        return "<module>"
+    return "<function>"
 
 
 def _serialize(v, heap, seen):
