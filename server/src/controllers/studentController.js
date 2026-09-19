@@ -2,6 +2,7 @@ const ClassProblem = require('../models/classProblem');
 const Submission = require('../models/submission');
 const ClassMember = require('../models/classMember');
 const {getDisplayStatus} = require('../utils/submissionStatus');
+const { notifyMany } = require('../utils/notify');
 require('../models/problem')
 
 /**
@@ -503,7 +504,8 @@ exports.createStudentSubmission = async (req, res) => {
 
         //2. Fetch ClassProblem to verify existence and check deadline
         const classProblem = await ClassProblem.findById(class_problem_id)
-            .populate('problem_id', 'problemType')    
+            .populate('problem_id', 'problemType title')
+            .populate('class_id', 'name')
             .lean();
 
         if (!classProblem || !classProblem.problem_id) {
@@ -591,6 +593,21 @@ exports.createStudentSubmission = async (req, res) => {
                 is_late: isLate,
                 status: submissionStatus,
             });
+
+        // Notify every trainer of this class that a new submission came in.
+        const members = await ClassMember.find({ classId: classProblem.class_id._id }).populate('userId', 'role fullname');
+        const trainerIds = members
+            .filter((m) => m.userId?.role === 'trainer')
+            .map((m) => m.userId._id);
+        notifyMany(trainerIds, {
+            type: 'SUBMISSION_CREATED',
+            title: isLate ? 'Late submission' : 'New submission',
+            message: `${req.user.fullname} submitted ${classProblem.problem_id.title}`,
+            context: `${classProblem.class_id.name} · ${problemType}`,
+            entityType: 'submission',
+            entityId: submission._id,
+            linkTo: `/trainer/submissions/${submission._id}`,
+        });
 
         return res.status(201).json({
             status: 'success',
