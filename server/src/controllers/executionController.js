@@ -1,8 +1,14 @@
 const { executeCode } = require('../utils/piston');
-const { buildTraceHarness } = require('../utils/pythonTracer');
+const { buildTraceHarness: buildPythonTraceHarness } = require('../utils/pythonTracer');
+const { buildTraceHarness: buildJsTraceHarness } = require('../utils/jsTracer');
 
 const MAX_CODE_LENGTH = 20000;
 const MAX_STDIN_LENGTH = 5000;
+
+const TRACE_BUILDERS = {
+    python: { build: buildPythonTraceHarness, pistonLanguage: 'python' },
+    javascript: { build: buildJsTraceHarness, pistonLanguage: 'javascript' },
+};
 
 /**
  * Run student-submitted code in a sandboxed Piston runtime
@@ -58,12 +64,14 @@ exports.runCode = async (req, res) => {
 };
 
 /**
- * Trace student-submitted Python code line-by-line for the step visualizer (Pointerwalk).
+ * Trace student-submitted code line-by-line for the step visualizer (Pointerwalk).
+ * Supports Python and JavaScript.
  * POST /api/execution/trace
  */
 exports.traceCode = async (req, res) => {
     try {
-        const { code, stdin } = req.body;
+        const { code, stdin, language } = req.body;
+        const normalizedLanguage = typeof language === 'string' ? language.toLowerCase() : 'python';
 
         if (!code || typeof code !== 'string') {
             return res.status(400).json({ status: 'error', message: 'code is required' });
@@ -74,9 +82,13 @@ exports.traceCode = async (req, res) => {
         if (stdin && String(stdin).length > MAX_STDIN_LENGTH) {
             return res.status(400).json({ status: 'error', message: `stdin exceeds the ${MAX_STDIN_LENGTH} character limit` });
         }
+        const builder = TRACE_BUILDERS[normalizedLanguage];
+        if (!builder) {
+            return res.status(400).json({ status: 'error', message: `Visualization is not supported for ${language}` });
+        }
 
-        const harness = buildTraceHarness(code);
-        const result = await executeCode({ language: 'python', code: harness, stdin: stdin || '' });
+        const harness = builder.build(code);
+        const result = await executeCode({ language: builder.pistonLanguage, code: harness, stdin: stdin || '' });
         const run = result.run || {};
 
         if (typeof run.code === 'number' && run.code !== 0 && !run.stdout) {

@@ -8,8 +8,14 @@
 //   PISTON_API_URL=http://localhost:2000/api/v2 node scripts/validate-tracer.js
 const fs = require('fs');
 const path = require('path');
-const { buildTraceHarness } = require('../src/utils/pythonTracer');
+const { buildTraceHarness: buildPythonTraceHarness } = require('../src/utils/pythonTracer');
+const { buildTraceHarness: buildJsTraceHarness } = require('../src/utils/jsTracer');
 const { executeCode } = require('../src/utils/piston');
+
+const BUILDERS = {
+  python: { build: buildPythonTraceHarness, pistonLanguage: 'python' },
+  javascript: { build: buildJsTraceHarness, pistonLanguage: 'javascript' },
+};
 
 const OUT_DIR = path.join(__dirname, 'tracer-validation-output');
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -175,6 +181,99 @@ const CASES = [
       if (trace.error.type !== 'ZeroDivisionError') throw new Error(`expected ZeroDivisionError, got ${trace.error.type}`);
     },
   },
+  // ---- JavaScript cases (server/src/utils/jsTracer.js) ----
+  {
+    name: 'js-straight-line',
+    language: 'javascript',
+    code: 'const x = 1;\nconst y = 2;\nconst z = x + y;\nconsole.log(z);\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (trace.steps.length < 4) throw new Error(`expected >=4 steps, got ${trace.steps.length}`);
+      if (trace.stdout.trim() !== '3') throw new Error(`expected stdout '3', got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'js-function-call',
+    language: 'javascript',
+    code: 'function add(a, b) {\n  return a + b;\n}\n\nconsole.log(add(1, 2));\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 2) throw new Error(`expected a multi-frame trace, got max ${maxFrameCount(trace)} frame(s)`);
+      if (trace.stdout.trim() !== '3') throw new Error(`expected stdout '3', got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'js-loop',
+    language: 'javascript',
+    code: 'function total(arr) {\n  let result = 0;\n  for (let i = 0; i < arr.length; i++) {\n    result += arr[i];\n  }\n  return result;\n}\n\nconsole.log(total([4, 1, 7]));\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 2) throw new Error(`expected a multi-frame trace, got max ${maxFrameCount(trace)} frame(s)`);
+      if (trace.stdout.trim() !== '12') throw new Error(`expected stdout '12', got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'js-recursive-factorial',
+    language: 'javascript',
+    code: 'function factorial(n) {\n  if (n <= 1) {\n    return 1;\n  }\n  return n * factorial(n - 1);\n}\n\nconsole.log(factorial(4));\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 5) throw new Error(`expected recursion depth >=5, got max ${maxFrameCount(trace)} frame(s)`);
+      if (trace.stdout.trim() !== '24') throw new Error(`expected stdout '24', got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'js-bubble-sort',
+    language: 'javascript',
+    code:
+      'function bubbleSort(arr) {\n  const n = arr.length;\n  for (let i = 0; i < n; i++) {\n    for (let j = 0; j < n - i - 1; j++) {\n      if (arr[j] > arr[j + 1]) {\n        const tmp = arr[j];\n        arr[j] = arr[j + 1];\n        arr[j + 1] = tmp;\n      }\n    }\n  }\n  return arr;\n}\n\n' +
+      'console.log(bubbleSort([5, 2, 4, 1, 3]));\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      const snaps = listSnapshots(trace, 5);
+      const distinct = new Set(snaps);
+      if (distinct.size < 2) throw new Error(`expected the array to visibly change across steps, got ${distinct.size} distinct snapshot(s)`);
+      if (snaps[snaps.length - 1] !== JSON.stringify([1, 2, 3, 4, 5])) {
+        throw new Error(`expected final array snapshot to be sorted, got ${snaps[snaps.length - 1]}`);
+      }
+    },
+  },
+  {
+    name: 'js-map-counting',
+    language: 'javascript',
+    code:
+      'function majorityElement(nums) {\n  const counts = new Map();\n  for (const num of nums) {\n    counts.set(num, (counts.get(num) || 0) + 1);\n    if (counts.get(num) > nums.length / 2) {\n      return num;\n    }\n  }\n  return null;\n}\n\n' +
+      'console.log(majorityElement([2, 2, 1, 1, 1, 2, 2]));\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (trace.stdout.trim() !== '2') throw new Error(`expected stdout '2', got ${JSON.stringify(trace.stdout)}`);
+      if (!hasHeapType(trace, 'dict')) throw new Error('expected the Map to appear in the heap as a dict entry');
+    },
+  },
+  {
+    name: 'js-class-linked-list',
+    language: 'javascript',
+    code:
+      'class Node {\n  constructor(val, next = null) {\n    this.val = val;\n    this.next = next;\n  }\n}\n\n' +
+      'function reverse(head) {\n  let prev = null;\n  let curr = head;\n  while (curr) {\n    const nxt = curr.next;\n    curr.next = prev;\n    prev = curr;\n    curr = nxt;\n  }\n  return prev;\n}\n\n' +
+      'const head = new Node(1, new Node(2, new Node(3, null)));\nconst newHead = reverse(head);\nconsole.log(newHead.val);\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 2) throw new Error(`expected a multi-frame trace, got max ${maxFrameCount(trace)} frame(s)`);
+      if (!hasHeapType(trace, 'Node')) throw new Error('expected Node objects to appear in the heap');
+      if (trace.stdout.trim() !== '3') throw new Error(`expected stdout '3' (reversed head.val), got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'js-runtime-error',
+    language: 'javascript',
+    code: 'const x = 1;\nconsole.log(x.toFixed(2));\nundefinedFunctionCall();\n',
+    check: (trace) => {
+      if (!trace.error) throw new Error('expected an error for calling an undefined function');
+      if (trace.error.type !== 'ReferenceError') throw new Error(`expected ReferenceError, got ${trace.error.type}`);
+      if (trace.error.line !== 3) throw new Error(`expected error on line 3, got ${trace.error.line}`);
+    },
+  },
 ];
 
 async function main() {
@@ -183,8 +282,9 @@ async function main() {
   for (const testCase of CASES) {
     process.stdout.write(`\n=== ${testCase.name} ===\n`);
     try {
-      const harness = buildTraceHarness(testCase.code);
-      const result = await executeCode({ language: 'python', code: harness, stdin: '' });
+      const { build, pistonLanguage } = BUILDERS[testCase.language || 'python'];
+      const harness = build(testCase.code);
+      const result = await executeCode({ language: pistonLanguage, code: harness, stdin: '' });
       const run = result.run || {};
       fs.writeFileSync(path.join(OUT_DIR, `${testCase.name}.raw.json`), JSON.stringify(result, null, 2));
 

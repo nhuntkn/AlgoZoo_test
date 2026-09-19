@@ -5,6 +5,7 @@ import type { TraceFrame, TraceHeapEntry, TraceResult, TraceValue } from '../../
 interface TraceVisualizerProps {
   code: string
   trace: TraceResult
+  language: string
 }
 
 const ROW_H = 22
@@ -21,9 +22,13 @@ const HEAP_ORIGIN_Y = 20
 const MAX_ROWS_SHOWN = 5
 const PLAY_INTERVAL_MS = 700
 
-function formatPrimitive(value: string | number | boolean | null): string {
-  if (value === null) return 'None'
-  if (typeof value === 'boolean') return value ? 'True' : 'False'
+function formatPrimitive(value: string | number | boolean | null, language: string): string {
+  const isPython = language === 'Python'
+  if (value === null) return isPython ? 'None' : 'null'
+  if (typeof value === 'boolean') {
+    if (!isPython) return String(value)
+    return value ? 'True' : 'False'
+  }
   if (typeof value === 'string') {
     const quoted = `'${value}'`
     return quoted.length > 22 ? quoted.slice(0, 20) + "...'" : quoted
@@ -44,17 +49,18 @@ interface HeapRow {
   text?: string
 }
 
-function formatValue(v: TraceValue): string {
-  return v.kind === 'value' ? formatPrimitive(v.value) : '<ref>'
+function formatValue(v: TraceValue, language: string): string {
+  if (v.kind === 'undefined') return 'undefined'
+  return v.kind === 'value' ? formatPrimitive(v.value, language) : '<ref>'
 }
 
-function heapEntryRows(entry: TraceHeapEntry): HeapRow[] {
+function heapEntryRows(entry: TraceHeapEntry, language: string): HeapRow[] {
   let rows: HeapRow[]
   if ('fields' in entry) {
     rows = entry.fields.map(([name, v]) => ({ label: name, value: v }))
   } else if ('items' in entry && entry.type === 'dict') {
     const dictItems = entry.items as [TraceValue, TraceValue][]
-    rows = dictItems.map(([k, v]) => ({ label: formatValue(k), value: v }))
+    rows = dictItems.map(([k, v]) => ({ label: formatValue(k, language), value: v }))
   } else if ('items' in entry) {
     const listItems = entry.items as TraceValue[]
     rows = listItems.map((v, i) => ({ label: String(i), value: v }))
@@ -99,7 +105,7 @@ function TraceBanners({ trace }: { trace: TraceResult }) {
   )
 }
 
-export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
+export function TraceVisualizer({ code, trace, language }: TraceVisualizerProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -241,7 +247,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
                   <circle cx={FRAME_X + FRAME_W - 10} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
                 ) : (
                   <text x={FRAME_X + FRAME_W - 12} y={midY} fontSize={12.5} fill="#9ca3af" textAnchor="end" fontStyle="italic">
-                    {formatPrimitive(v.value)}
+                    {formatValue(v, language)}
                   </text>
                 )}
                 {vi > 0 && <line x1={FRAME_X} y1={rowY} x2={FRAME_X + FRAME_W} y2={rowY} stroke="#f3f4f6" />}
@@ -257,7 +263,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
   const heapEls: React.ReactNode[] = []
   Object.entries(step.heap).forEach(([id, entry]) => {
     const pos = boxPos(id)
-    const rows = heapEntryRows(entry)
+    const rows = heapEntryRows(entry, language)
     const height = HEADER_H + rows.length * ROW_H
     const col = heapLayout[id]?.col ?? 0
 
@@ -298,9 +304,9 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
               </text>
               {isRef ? (
                 <circle cx={exitLeft ? pos.x + 6 : pos.x + BOX_W - 6} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
-              ) : row.value && row.value.kind === 'value' ? (
+              ) : row.value ? (
                 <text x={pos.x + BOX_W - 10} y={midY} fontSize={12} fill="#9ca3af" textAnchor="end" fontStyle="italic">
-                  {formatPrimitive(row.value.value)}
+                  {formatValue(row.value, language)}
                 </text>
               ) : null}
             </g>

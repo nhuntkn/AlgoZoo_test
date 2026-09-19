@@ -22,6 +22,8 @@ const MONACO_LANGUAGE_MAP: Record<string, string> = {
   TypeScript: 'typescript',
 }
 
+const VISUALIZABLE_LANGUAGES = ['Python', 'JavaScript']
+
 export function ProblemWorkspace() {
   const { classId = '', problemId = '' } = useParams()
   const navigate = useNavigate()
@@ -102,14 +104,14 @@ export function ProblemWorkspace() {
     }
   }
 
-  const canVisualize = language === 'Python' && lastSuccessfulRun?.code === content && lastSuccessfulRun?.language === language
+  const canVisualize = VISUALIZABLE_LANGUAGES.includes(language) && lastSuccessfulRun?.code === content && lastSuccessfulRun?.language === language
 
   const handleVisualize = async () => {
     if (!canVisualize || visualizing) return
     setVisualizing(true)
     setTraceError('')
     try {
-      const response = await executionService.trace({ code: content })
+      const response = await executionService.trace({ code: content, language })
       setTraceResult(response.data)
       setTracedCode(content)
     } catch (requestError) {
@@ -361,8 +363,8 @@ export function ProblemWorkspace() {
                   onClick={handleVisualize}
                   disabled={!canVisualize || visualizing}
                   title={
-                    language !== 'Python'
-                      ? 'Visualization is available for Python only'
+                    !VISUALIZABLE_LANGUAGES.includes(language)
+                      ? `Visualization is available for ${VISUALIZABLE_LANGUAGES.join(' and ')} only`
                       : !canVisualize
                         ? 'Run your code successfully first'
                         : undefined
@@ -372,8 +374,8 @@ export function ProblemWorkspace() {
                   {visualizing ? 'Visualizing...' : 'Visualize'}
                 </Button>
               </div>
-              {language !== 'Python' && (
-                <p className="mt-2 text-xs text-gray-400">Step-by-step visualization is available for Python only, for now.</p>
+              {!VISUALIZABLE_LANGUAGES.includes(language) && (
+                <p className="mt-2 text-xs text-gray-400">Step-by-step visualization is available for {VISUALIZABLE_LANGUAGES.join(' and ')} only, for now.</p>
               )}
               {runError && <p className="mt-2 text-sm text-red-600">{runError}</p>}
               {runResult && (
@@ -401,7 +403,7 @@ export function ProblemWorkspace() {
               {traceError && <p className="mt-3 text-sm text-red-600">{traceError}</p>}
               {traceResult && tracedCode === content && (
                 <div className="mt-3">
-                  <TraceVisualizer code={content} trace={traceResult} />
+                  <TraceVisualizer code={content} trace={traceResult} language={language} />
                 </div>
               )}
               <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.pdf" onChange={handleFileChange} className="hidden" />

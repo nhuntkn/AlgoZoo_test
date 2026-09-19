@@ -28,12 +28,14 @@ export interface RunCodeResponse {
 
 export interface TraceCodeRequest {
   code: string
+  language: string
   stdin?: string
 }
 
 export type TraceValue =
   | { kind: 'value'; value: string | number | boolean | null }
   | { kind: 'ref'; id: string }
+  | { kind: 'undefined' }
 
 export interface TraceFrame {
   fn: string
