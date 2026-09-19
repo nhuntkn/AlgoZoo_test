@@ -37,6 +37,12 @@ function hasHeapType(trace, type) {
   return trace.steps.some((s) => Object.values(s.heap).some((entry) => entry.type === type));
 }
 
+function hasVarValue(trace, needle) {
+  return trace.steps.some((s) =>
+    s.frames.some((f) => f.vars.some(([, v]) => v.kind === 'value' && v.value === needle))
+  );
+}
+
 const CASES = [
   {
     name: 'straight-line',
@@ -139,6 +145,26 @@ const CASES = [
       if (maxFrameCount(trace) < 3) throw new Error(`expected nested inorder() recursion, got max ${maxFrameCount(trace)} frame(s)`);
       if (!hasHeapType(trace, 'TreeNode')) throw new Error('expected TreeNode objects to appear in the heap');
       if (trace.stdout.trim() !== '[1, 2, 3]') throw new Error(`expected in-order traversal, got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'validate-bst',
+    code:
+      'class TreeNode:\n    def __init__(self, val=0, left=None, right=None):\n        self.val = val\n        self.left = left\n        self.right = right\n\n\n' +
+      'class Solution:\n    def isValidBST(self, root):\n\n        def dfs(node, low, high):\n            if node is None:\n                return True\n\n            if node.val <= low or node.val >= high:\n                return False\n\n            return dfs(node.left, low, node.val) and \\\n                   dfs(node.right, node.val, high)\n\n        return dfs(root, float("-inf"), float("inf"))\n\n\n' +
+      'root = TreeNode(\n    5,\n    TreeNode(3, TreeNode(2), TreeNode(4)),\n    TreeNode(7, TreeNode(6), TreeNode(8))\n)\n\n' +
+      'solution = Solution()\n\nprint(solution.isValidBST(root))\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (trace.stdout.trim() !== 'True') throw new Error(`expected stdout 'True', got ${JSON.stringify(trace.stdout)}`);
+      if (!hasHeapType(trace, 'TreeNode')) throw new Error('expected TreeNode objects to appear in the heap');
+      if (maxFrameCount(trace) < 4) throw new Error(`expected nested dfs() recursion inside a method, got max ${maxFrameCount(trace)} frame(s)`);
+      // float("-inf")/float("inf") serialize as bare Infinity/-Infinity tokens via json.dumps,
+      // which JSON.parse on the client rejects outright — this is what actually broke without
+      // the fix (JSON.parse(run.stdout) below would throw), not just a value-correctness issue.
+      if (!hasVarValue(trace, '-Infinity') || !hasVarValue(trace, 'Infinity')) {
+        throw new Error('expected float("-inf")/float("inf") to be sanitized into Infinity/-Infinity labels');
+      }
     },
   },
   {

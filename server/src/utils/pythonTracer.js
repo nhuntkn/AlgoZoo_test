@@ -13,7 +13,7 @@ const MAX_STRING_LEN = 300;
 function buildTraceHarness(studentCode) {
   const encoded = Buffer.from(studentCode, 'utf-8').toString('base64');
 
-  return `import sys, json, io, base64, types
+  return `import sys, json, io, base64, types, math
 
 MAX_STEPS = ${MAX_STEPS}
 MAX_DEPTH = ${MAX_DEPTH}
@@ -59,6 +59,11 @@ def _opaque_label(v):
 
 
 def _serialize(v, heap, seen):
+    # json.dumps emits float("inf")/float("-inf")/float("nan") as the bare tokens
+    # Infinity/-Infinity/NaN, which are valid to Python's own parser but not to
+    # JSON.parse on the client, breaking the whole trace. Render them as labels instead.
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return {"kind": "value", "value": "NaN" if math.isnan(v) else ("Infinity" if v > 0 else "-Infinity")}
     if _is_primitive(v):
         return {"kind": "value", "value": _clip_str(v) if isinstance(v, str) else v}
     if _is_opaque_callable(v):
