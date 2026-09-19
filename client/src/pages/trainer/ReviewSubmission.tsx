@@ -3,10 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { FileText, Code2, ImageIcon, Paperclip, Download, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { useNotifications } from '../../context/NotificationContext'
 import { getSubmissionDetail, reviewSubmission } from '../../services/submissionService'
 import { getFileUrl } from '../../services/fileService'
-import { getProblemDetail, mapProblemType } from '../../services/problemService'
+import { getProblemDetail } from '../../services/problemService'
 import type { SubmissionDetail, ContentBlock } from '../../types/submission'
 import type { Problem } from '../../types/problem'
 
@@ -118,7 +117,6 @@ function initials(name: string) {
 
 export function ReviewSubmission() {
   const { id = '' } = useParams()
-  const { addNotification } = useNotifications()
 
   const [submission, setSubmission] = useState<SubmissionDetail | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
@@ -153,16 +151,6 @@ export function ReviewSubmission() {
     try {
       await reviewSubmission(id, feedback)
       setSubmission((prev) => (prev ? { ...prev, status: 'review', feedback } : prev))
-      addNotification({
-        recipientRole: 'student',
-        type: 'GRADE_RELEASED',
-        title: 'Submission graded',
-        message: `Your submission for ${submission.problem?.title ?? 'this problem'} has been graded.`,
-        context: `${submission.class?.className ?? ''} · ${problem ? mapProblemType(problem.type) : ''}`,
-        entityType: 'submission',
-        entityId: submission.submission_id,
-        linkTo: `/student/submissions/${submission.submission_id}`,
-      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save this review')
     } finally {

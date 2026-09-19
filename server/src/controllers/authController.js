@@ -8,6 +8,7 @@ const ClassMember = require('../models/classMember');
 const validateEmail = require('../validators/emailFormat');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const { notifyMany } = require('../utils/notify');
 
 /** Register User via Admin Invitation Link (Token-based)
  *  POST /routes/auth/register
@@ -148,6 +149,18 @@ exports.register = async (req, res) => {
         //Commit changes to the database
         await session.commitTransaction();
         session.endSession();
+
+        // Notify every admin that a new user joined via invite link.
+        const admins = await User.find({ role: 'admin' }).select('_id');
+        notifyMany(admins.map((a) => a._id), {
+            type: 'USER_REGISTERED',
+            title: 'New member joined',
+            message: `${user.fullname} joined as a ${role} in ${classDoc.name}`,
+            context: classDoc.name,
+            entityType: 'user',
+            entityId: user._id,
+            linkTo: `/admin/users`,
+        });
 
         // 8. Generate JWT Tokens upon successful registration
         const accessToken = generateAccessToken(user._id);
