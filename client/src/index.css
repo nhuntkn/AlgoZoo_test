@@ -155,7 +155,6 @@
 /* ── Sidebar — dark base with rainbow right-edge stripe ─────── */
 [data-theme="lgbt"] .bg-sidebar {
   background-color: #1a1f2e;
-  position: relative;
 }
 [data-theme="lgbt"] .bg-sidebar::after {
   content: '';
