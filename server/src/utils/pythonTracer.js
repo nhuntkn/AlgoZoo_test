@@ -13,7 +13,7 @@ const MAX_STRING_LEN = 300;
 function buildTraceHarness(studentCode) {
   const encoded = Buffer.from(studentCode, 'utf-8').toString('base64');
 
-  return `import sys, json, io, base64
+  return `import sys, json, io, base64, types
 
 MAX_STEPS = ${MAX_STEPS}
 MAX_DEPTH = ${MAX_DEPTH}
@@ -39,9 +39,30 @@ def _clip_str(s):
     return s if len(s) <= MAX_STRING_LEN else s[:MAX_STRING_LEN] + "..."
 
 
+# Functions/classes/modules technically have a __dict__ (usually empty), which would
+# otherwise make _serialize treat them as heap objects. Every module-level function
+# definition shows up as a local in the <module> frame, so without this every trace
+# would show a meaningless empty box for each function the student defined. These
+# aren't the data the visualizer is meant to show, so render them as a plain label
+# instead of a heap ref.
+def _is_opaque_callable(v):
+    return isinstance(v, (types.FunctionType, types.BuiltinFunctionType, types.MethodType, type, types.ModuleType))
+
+
+def _opaque_label(v):
+    name = getattr(v, "__name__", None) or repr(v)
+    if isinstance(v, type):
+        return "<class %s>" % name
+    if isinstance(v, types.ModuleType):
+        return "<module %s>" % name
+    return "<function %s>" % name
+
+
 def _serialize(v, heap, seen):
     if _is_primitive(v):
         return {"kind": "value", "value": _clip_str(v) if isinstance(v, str) else v}
+    if _is_opaque_callable(v):
+        return {"kind": "value", "value": _opaque_label(v)}
 
     key = str(id(v))
     if key in seen:
