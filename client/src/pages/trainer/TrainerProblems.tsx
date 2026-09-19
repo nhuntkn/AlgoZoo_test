@@ -74,6 +74,7 @@ export function TrainerProblems() {
       closeModal()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not save this problem')
+      throw err
     } finally {
       setSaving(false)
     }
@@ -315,7 +316,7 @@ export function TrainerProblems() {
                 }
               : undefined
           }
-          onSave={(draft) => void handleSave(draft)}
+          onSave={handleSave}
           onClose={closeModal}
         />
       )}
