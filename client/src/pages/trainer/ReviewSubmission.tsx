@@ -88,20 +88,32 @@ function BlockView({ block }: { block: ContentBlock }) {
 
   if (block.type === 'file') {
     const src = block.file_id ? getFileUrl(block.file_id) : undefined
-    const isPdf = block.filename?.toLowerCase().endsWith('.pdf')
+    const lower = block.filename?.toLowerCase() ?? ''
+    const isPdf = lower.endsWith('.pdf')
+    const isImageFile = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some((ext) => lower.endsWith(ext))
     return (
       <div>
-        <div className="flex items-center gap-3 px-5 py-4">
+        <div className={`flex items-center gap-3 px-5 py-4${isImageFile ? ' border-b border-gray-100 bg-gray-50' : ''}`}>
           <Paperclip size={15} className="text-gray-400 flex-shrink-0" />
           {src ? (
-            <a href={src} download={block.filename} className="text-sm text-accent hover:underline inline-flex items-center gap-1.5">
-              {block.filename}
-              <Download size={13} />
+            <a href={src} download={block.filename} className="text-sm text-accent hover:underline inline-flex items-center gap-1.5 flex-1 min-w-0">
+              <span className="truncate">{block.filename}</span>
+              <Download size={13} className="flex-shrink-0" />
             </a>
           ) : (
             <span className="text-sm text-gray-700">{block.filename}</span>
           )}
         </div>
+        {src && isImageFile && (
+          <div className="p-5 bg-gray-50 flex items-center justify-center">
+            <img
+              src={src}
+              alt={block.filename ?? 'Attached image'}
+              className="max-w-full max-h-96 rounded-lg"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+            />
+          </div>
+        )}
         {src && isPdf && (
           <iframe src={src} title={block.filename ?? 'PDF preview'} className="w-full h-96 border-t border-gray-100" />
         )}

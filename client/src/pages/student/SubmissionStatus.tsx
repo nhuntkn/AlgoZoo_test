@@ -1,11 +1,55 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  ArrowLeft, CheckCircle2, Clock, Code2, FileText, Loader2, MessageSquare,
+  ArrowLeft, CheckCircle2, Clock, Code2, Download, FileText, ImageIcon, Loader2, MessageSquare, Paperclip,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { studentService } from '../../services/studentService'
+import { getFileUrl } from '../../services/fileService'
 import type { StudentProblemDetail } from '../../types/classProblem'
+import type { SubmissionContentBlock } from '../../types/submission'
+
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+
+function AttachmentPreview({ block }: { block: SubmissionContentBlock }) {
+  const src = block.file_id ? getFileUrl(block.file_id) : undefined
+  const lower = block.filename?.toLowerCase() ?? ''
+  const showImg = block.type === 'image' || IMAGE_EXTS.some((ext) => lower.endsWith(ext))
+  const label = block.filename || 'Uploaded file'
+  return (
+    <div className="border-b border-gray-50 last:border-b-0">
+      <div className="flex items-center gap-2 px-5 py-3 bg-gray-50 border-b border-gray-100">
+        {showImg
+          ? <ImageIcon size={13} className="text-gray-400" />
+          : <Paperclip size={13} className="text-gray-400" />
+        }
+        <span className="text-xs text-gray-500 flex-1 truncate">{label}</span>
+        {src && (
+          <a href={src} download={block.filename} className="inline-flex items-center gap-1 text-xs text-accent hover:underline flex-shrink-0">
+            <Download size={12} /> Download
+          </a>
+        )}
+      </div>
+      {showImg && (
+        <div className="px-5 py-4 flex justify-center">
+          {src ? (
+            <img
+              src={src}
+              alt={label}
+              className="max-w-full max-h-96 rounded-lg"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-4 text-gray-400">
+              <ImageIcon size={24} />
+              <p className="text-xs">{label}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function SubmissionStatus() {
   const { id = '' } = useParams()
@@ -125,9 +169,7 @@ export function SubmissionStatus() {
                   </div>
                 )}
                 {(block.type === 'image' || block.type === 'file') && (
-                  <div className="px-5 py-4 border-b border-gray-50 last:border-b-0 text-sm text-gray-600">
-                    Attached file: {block.filename || 'Uploaded file'}
-                  </div>
+                  <AttachmentPreview block={block} />
                 )}
               </div>
             ))}
