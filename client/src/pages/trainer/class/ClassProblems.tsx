@@ -437,7 +437,7 @@ export function ClassProblems() {
                         )}
                         <div>
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Description</p>
-                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{preview.description}</p>
+                          <p className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: preview.description }} />
                         </div>
                         {preview.resource_url && (
                           <div>
