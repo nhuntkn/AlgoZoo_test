@@ -7,14 +7,14 @@ interface TraceVisualizerProps {
   trace: TraceResult
 }
 
-const ROW_H = 32
-const HEADER_H = 34
+const ROW_H = 22
+const HEADER_H = 24
 const FRAME_X = 16
-const FRAME_W = 270
-const FRAME_GAP = 18
-const BOX_W = 220
-const BOX_GAP_X = 40
-const BOX_GAP_Y = 40
+const FRAME_W = 220
+const FRAME_GAP = 14
+const BOX_W = 170
+const BOX_GAP_X = 36
+const BOX_GAP_Y = 36
 const MAX_HEAP_COLS = 3
 const HEAP_ORIGIN_X = FRAME_X + FRAME_W + 60
 const HEAP_ORIGIN_Y = 20
@@ -207,12 +207,12 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     frameEls.push(
       <g key={`frame-${fi}`}>
         <rect x={FRAME_X} y={y} width={FRAME_W} height={height} rx={10} fill={isActive ? '#ecebfd' : 'white'} stroke={isActive ? '#5750e8' : '#e5e7eb'} />
-        <text x={FRAME_X + 10} y={y + 21} fontSize={15} fontWeight={700} fill="#6b7280" letterSpacing="0.03em">
+        <text x={FRAME_X + 10} y={y + 16} fontSize={12} fontWeight={700} fill="#6b7280" letterSpacing="0.03em">
           {frame.fn.toUpperCase()}
         </text>
         <line x1={FRAME_X} y1={y + HEADER_H} x2={FRAME_X + FRAME_W} y2={y + HEADER_H} stroke="#e5e7eb" />
         {frame.vars.length === 0 ? (
-          <text x={FRAME_X + 12} y={y + HEADER_H + 21} fontSize={15.5} fontStyle="italic" fill="#9ca3af">
+          <text x={FRAME_X + 12} y={y + HEADER_H + 16} fontSize={12.5} fontStyle="italic" fill="#9ca3af">
             no locals
           </text>
         ) : (
@@ -226,13 +226,13 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
             }
             return (
               <g key={name}>
-                <text x={FRAME_X + 12} y={midY} fontSize={16.5} fill="#374151">
+                <text x={FRAME_X + 12} y={midY} fontSize={13.5} fill="#374151">
                   {name}
                 </text>
                 {v.kind === 'ref' ? (
                   <circle cx={FRAME_X + FRAME_W - 10} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
                 ) : (
-                  <text x={FRAME_X + FRAME_W - 12} y={midY} fontSize={15.5} fill="#9ca3af" textAnchor="end" fontStyle="italic">
+                  <text x={FRAME_X + FRAME_W - 12} y={midY} fontSize={12.5} fill="#9ca3af" textAnchor="end" fontStyle="italic">
                     {formatPrimitive(v.value)}
                   </text>
                 )}
@@ -256,7 +256,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
     heapEls.push(
       <g key={id}>
         <rect x={pos.x} y={pos.y} width={BOX_W} height={height} rx={10} fill="#f8f9fb" stroke="#e5e7eb" />
-        <text x={pos.x + 10} y={pos.y + 21} fontSize={14} fontWeight={700} fill="#9ca3af" letterSpacing="0.03em">
+        <text x={pos.x + 10} y={pos.y + 16} fontSize={11} fontWeight={700} fill="#9ca3af" letterSpacing="0.03em">
           {entry.type.toUpperCase()}
         </text>
         <line x1={pos.x} y1={pos.y + HEADER_H} x2={pos.x + BOX_W} y2={pos.y + HEADER_H} stroke="#e5e7eb" />
@@ -266,7 +266,7 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
 
           if (row.text !== undefined) {
             return (
-              <text key={ri} x={pos.x + 10} y={midY} fontSize={15} fill="#9ca3af" fontStyle="italic">
+              <text key={ri} x={pos.x + 10} y={midY} fontSize={12} fill="#9ca3af" fontStyle="italic">
                 {row.text}
               </text>
             )
@@ -284,13 +284,13 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
 
           return (
             <g key={ri}>
-              <text x={pos.x + 10} y={midY} fontSize={15.5} fill="#374151">
+              <text x={pos.x + 10} y={midY} fontSize={12.5} fill="#374151">
                 {row.label}
               </text>
               {isRef ? (
                 <circle cx={exitLeft ? pos.x + 6 : pos.x + BOX_W - 6} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
               ) : row.value && row.value.kind === 'value' ? (
-                <text x={pos.x + BOX_W - 10} y={midY} fontSize={15} fill="#9ca3af" textAnchor="end" fontStyle="italic">
+                <text x={pos.x + BOX_W - 10} y={midY} fontSize={12} fill="#9ca3af" textAnchor="end" fontStyle="italic">
                   {formatPrimitive(row.value.value)}
                 </text>
               ) : null}
