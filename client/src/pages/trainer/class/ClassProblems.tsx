@@ -5,7 +5,6 @@ import { ClassTabNav } from '../../../components/layout/ClassTabNav'
 import { TypeBadge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { ProgressBar } from '../../../components/ui/ProgressBar'
-import { useNotifications } from '../../../context/NotificationContext'
 import { useProblems } from '../../../hooks/useProblems'
 import { useClassDetail } from '../../../hooks/useClassDetail'
 import { getProblemDetail, mapProblemType } from '../../../services/problemService'
@@ -33,7 +32,6 @@ export function ClassProblems() {
   const { classId = '' } = useParams()
   const { classDetail } = useClassDetail(classId)
   const className = classDetail?.className ?? '...'
-  const { addNotification } = useNotifications()
   const { problems: problemBank, loading: bankLoading } = useProblems()
 
   // Assigned problems list state
@@ -135,19 +133,6 @@ export function ClassProblems() {
       }
       setAssigned(true)
       loadProblems()
-      // Notify student for each assigned problem
-      selected.forEach(({ problem }) => {
-        addNotification({
-          recipientRole: 'student',
-          type: 'ASSIGNMENT_ASSIGNED',
-          title: 'New assignment',
-          message: `You have a new assignment: ${problem.title}`,
-          context: `${className} · ${problem.type}`,
-          entityType: 'problem',
-          entityId: problem.id,
-          linkTo: `/student/classes/${classId}/problems/${problem.id}`,
-        })
-      })
     } catch (err) {
       setAssignError(err instanceof Error ? err.message : 'Could not assign these problems')
     } finally {
@@ -421,8 +406,7 @@ export function ClassProblems() {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={(e) => { e.stopPropagation(); toggleProblem(p) }}
-                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleProblem(p)}
                             className="accent-red-600 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">

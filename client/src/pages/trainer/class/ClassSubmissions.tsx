@@ -26,6 +26,14 @@ function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }
 
+// Pending / Reviewed / Late are mutually exclusive here (matches the Dashboard's queue split) —
+// a late-and-unreviewed submission must read "Late", not "Pending".
+function statusDisplay(s: Submission): { label: string; variant: 'pending' | 'reviewed' | 'late' } {
+  if (s.status === 'REVIEWED') return { label: 'Reviewed', variant: 'reviewed' }
+  if (s.isLate) return { label: 'Late', variant: 'late' }
+  return { label: 'Pending', variant: 'pending' }
+}
+
 function toSubmission(s: SubmissionListItem): Submission {
   const submittedDate = new Date(s.submitted_at)
   return {
@@ -71,6 +79,7 @@ export function ClassSubmissions() {
 
   const problemFilter = searchParams.get('problem') ?? ''
   const topicFilter = searchParams.get('topic') ?? ''
+  const studentFilter = searchParams.get('student') ?? ''
 
   const clearFilter = () => setSearchParams({})
 
@@ -87,7 +96,8 @@ export function ClassSubmissions() {
       const matchSearch = search === '' || s.student.toLowerCase().includes(search.toLowerCase()) || s.problem.toLowerCase().includes(search.toLowerCase())
       const matchProblem = problemFilter === '' || s.problem === problemFilter
       const matchTopic = topicFilter === '' || s.topic === topicFilter
-      return matchSearch && matchProblem && matchTopic
+      const matchStudent = studentFilter === '' || s.student === studentFilter
+      return matchSearch && matchProblem && matchTopic && matchStudent
     })
 
   const filtered = baseFiltered.filter((s) =>
@@ -110,6 +120,8 @@ export function ClassSubmissions() {
     ? `Problem: ${problemFilter}`
     : topicFilter
     ? `Topic: ${topicFilter}`
+    : studentFilter
+    ? `Student: ${studentFilter}`
     : ''
 
   if (loading) {
@@ -196,7 +208,11 @@ export function ClassSubmissions() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">
-                    {items.filter((s) => s.status === 'PENDING').length} pending
+                    {items.filter((s) => s.status === 'PENDING' && !s.isLate).length} pending
+                  </span>
+                  <span className="text-xs text-gray-300">·</span>
+                  <span className="text-xs text-gray-400">
+                    {items.filter((s) => s.isLate).length} late
                   </span>
                   <span className="text-xs text-gray-300">·</span>
                   <span className="text-xs text-gray-400">
@@ -267,9 +283,7 @@ function SubmissionTable({ rows }: { rows: Submission[] }) {
           </div>
           <span className="text-sm text-gray-400">{s.submittedAt}</span>
           <div className="flex items-center">
-            <Badge variant={s.status === 'PENDING' ? 'pending' : 'reviewed'}>
-              {s.status === 'PENDING' ? 'Pending' : 'Reviewed'}
-            </Badge>
+            <Badge variant={statusDisplay(s).variant}>{statusDisplay(s).label}</Badge>
           </div>
           <div>
             <Link to={`/trainer/submissions/${s.id}`} className="text-xs text-accent font-semibold hover:underline">
@@ -303,9 +317,7 @@ function SubmissionRow({ s, last }: { s: Submission; last: boolean }) {
       <span className="text-sm text-gray-600">{s.problem}</span>
       <span className="text-sm text-gray-400">{s.submittedAt}</span>
       <div className="flex items-center">
-        <Badge variant={s.status === 'PENDING' ? 'pending' : 'reviewed'}>
-          {s.status === 'PENDING' ? 'Pending' : 'Reviewed'}
-        </Badge>
+        <Badge variant={statusDisplay(s).variant}>{statusDisplay(s).label}</Badge>
       </div>
       <div>
         <Link to={`/trainer/submissions/${s.id}`} className="text-xs text-accent font-semibold hover:underline">

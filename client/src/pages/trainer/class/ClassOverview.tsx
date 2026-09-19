@@ -27,8 +27,10 @@ export function ClassOverview() {
     { label: 'Students', to: `/trainer/classes/${classId}/students` },
   ]
 
+  // Pending here must mean the same thing as the Dashboard's "Pending Review" KPI —
+  // late-and-unreviewed submissions are their own bucket, not part of "pending".
   const reviewed = submissions.filter((s) => s.status === 'review').length
-  const pending = submissions.filter((s) => s.status !== 'review').length
+  const pending = submissions.filter((s) => s.status === 'pending').length
 
   if (loading) {
     return (

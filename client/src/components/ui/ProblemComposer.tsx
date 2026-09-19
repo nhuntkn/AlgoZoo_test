@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  ChevronLeft, X, Send, Settings, Lightbulb,
+  ChevronLeft, X, Send, Settings, Lightbulb, Info, AlertCircle,
   Bold, Italic, Underline, Strikethrough,
   ChevronDown, Link2, ExternalLink, Undo2, Redo2,
 } from 'lucide-react'
@@ -30,6 +30,8 @@ interface ProblemComposerProps {
   initial?: ProblemDraft
   onSave: (draft: ProblemDraft) => Promise<void>
   onClose: () => void
+  saving?: boolean
+  error?: string | null
 }
 
 let nextResourceId = 2000
@@ -41,20 +43,25 @@ const TOPIC_ICONS: Record<ProblemType, string> = {
   Other: '•',
 }
 
-export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemComposerProps) {
+export function ProblemComposer({ mode, initial, onSave, onClose, saving = false, error = null }: ProblemComposerProps) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [titleError, setTitleError] = useState(false)
   const [type, setType] = useState<ProblemType>(initial?.type ?? 'DSA')
   const [difficulty, setDifficulty] = useState<Difficulty | null>(initial?.difficulty ?? null)
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [descriptionError, setDescriptionError] = useState(false)
   // Only keep URL-based resources (no file attachments), max one link
   const [resources, setResources] = useState<Resource[]>(
     (initial?.resources ?? []).filter((r) => !r.filename && r.url)
   )
+  const [lastSeenError, setLastSeenError] = useState(error)
+  const [errorDismissed, setErrorDismissed] = useState(false)
+  if (error !== lastSeenError) {
+    setLastSeenError(error)
+    setErrorDismissed(false)
+  }
   const [topicOpen, setTopicOpen] = useState(false)
   const [addLinkOpen, setAddLinkOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [linkForm, setLinkForm] = useState({ label: '', url: '' })
   const editorRef = useRef<HTMLDivElement>(null)
   const isEdit = mode === 'edit'
@@ -89,16 +96,13 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
   /* ── publish ── */
   const handlePublish = async () => {
     const trimmed = title.trim()
-    if (!trimmed) { setTitleError(true); return }
-    setSaving(true)
-    setSaveError(null)
-    try {
-      await onSave({ title: trimmed, type, difficulty, description, resources })
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.')
-    } finally {
-      setSaving(false)
-    }
+    const descText = editorRef.current?.textContent?.trim() ?? ''
+    const missingTitle = !trimmed
+    const missingDescription = !descText
+    setTitleError(missingTitle)
+    setDescriptionError(missingDescription)
+    if (missingTitle || missingDescription) return
+    await onSave({ title: trimmed, type, difficulty, description: editorRef.current?.innerHTML ?? '', resources })
   }
 
   return (
@@ -112,10 +116,7 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
           <ChevronLeft size={16} />
           Back to Problem Bank
         </button>
-        <div className="flex items-center gap-2">
-          {saveError && (
-            <p className="text-xs text-red-500 max-w-xs truncate">{saveError}</p>
-          )}
+        <div className="flex items-center gap-3">
           <Button variant="secondary" size="sm" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
@@ -125,6 +126,28 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
           </Button>
         </div>
       </div>
+
+      {error && !errorDismissed && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-2xl shadow-xl w-[400px] p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <AlertCircle size={20} className="text-red-500" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">Couldn't save this problem</p>
+                <p className="text-sm text-gray-500 mt-1">{error}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setErrorDismissed(true)}
+              className="w-full py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
@@ -169,8 +192,14 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">Description</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-accent/40 transition-colors">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <div className={`border rounded-xl overflow-hidden transition-colors ${
+                descriptionError
+                  ? 'border-red-400'
+                  : 'border-gray-200 focus-within:border-accent/40'
+              }`}>
                 {/* Toolbar */}
                 <div className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-100 bg-white">
                   <ToolbarGroup>
@@ -190,10 +219,11 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
                   ref={editorRef}
                   contentEditable
                   suppressContentEditableWarning
-                  onInput={() => setDescription(editorRef.current?.innerHTML ?? '')}
-                  className="w-full px-4 py-3.5 text-sm text-gray-700 focus:outline-none leading-relaxed bg-white min-h-[200px] prose prose-sm max-w-none"
+                  onInput={() => { setDescription(editorRef.current?.innerHTML ?? ''); setDescriptionError(false) }}
+                  className={`w-full px-4 py-3.5 text-sm text-gray-700 focus:outline-none leading-relaxed min-h-[200px] prose prose-sm max-w-none ${descriptionError ? 'bg-red-50' : 'bg-white'}`}
                 />
               </div>
+              {descriptionError && <p className="text-xs text-red-500 mt-1.5">Description is required.</p>}
             </div>
 
             {/* Resources — one link only */}
@@ -344,31 +374,39 @@ export function ProblemComposer({ mode, initial, onSave, onClose }: ProblemCompo
               </div>
             </div>
 
-            {/* Difficulty */}
-            <div className={type !== 'DSA' ? 'opacity-40 pointer-events-none' : ''}>
+            {/* Difficulty — DSA only, other topics don't use a difficulty level */}
+            <div>
               <label className="block text-sm font-semibold text-gray-800 mb-2">Difficulty</label>
-              <div className="flex rounded-xl border border-gray-200 overflow-hidden">
-                {(['easy', 'medium', 'hard'] as Difficulty[]).map((d, i) => (
-                  <button
-                    key={d}
-                    disabled={type !== 'DSA'}
-                    onClick={() => setDifficulty(d)}
-                    className={`flex-1 py-2 text-xs font-semibold capitalize transition-colors ${
-                      i > 0 ? 'border-l border-gray-200' : ''
-                    } ${
-                      difficulty === d
-                        ? d === 'easy'
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : d === 'medium'
-                          ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                          : 'bg-red-50 text-red-700 border-red-200'
-                        : 'text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {d.charAt(0).toUpperCase() + d.slice(1)}
-                  </button>
-                ))}
-              </div>
+              {type === 'DSA' ? (
+                <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                  {(['easy', 'medium', 'hard'] as Difficulty[]).map((d, i) => (
+                    <button
+                      key={d}
+                      onClick={() => setDifficulty(d)}
+                      className={`flex-1 py-2 text-xs font-semibold capitalize transition-colors ${
+                        i > 0 ? 'border-l border-gray-200' : ''
+                      } ${
+                        difficulty === d
+                          ? d === 'easy'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : d === 'medium'
+                            ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
+                          : 'text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {d.charAt(0).toUpperCase() + d.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2.5 flex items-start gap-2">
+                  <Info size={13} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    {type} problems don't use a difficulty level — this only applies to DSA.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Tip card */}
