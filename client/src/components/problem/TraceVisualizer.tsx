@@ -31,6 +31,13 @@ function formatPrimitive(value: string | number | boolean | null): string {
   return String(value)
 }
 
+// Only values were ever truncated — a long variable/attribute name (e.g.
+// lengthOfLongestSubstring) rendered at full length, wide enough on its own to run
+// into a right-aligned value no matter how short that value is. Cap names too.
+function truncateName(name: string, max = 14): string {
+  return name.length > max ? name.slice(0, max - 1) + '…' : name
+}
+
 interface HeapRow {
   label: string
   value: TraceValue | null
@@ -227,7 +234,8 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
             return (
               <g key={name}>
                 <text x={FRAME_X + 12} y={midY} fontSize={13.5} fill="#374151">
-                  {name}
+                  <title>{name}</title>
+                  {truncateName(name)}
                 </text>
                 {v.kind === 'ref' ? (
                   <circle cx={FRAME_X + FRAME_W - 10} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
@@ -285,7 +293,8 @@ export function TraceVisualizer({ code, trace }: TraceVisualizerProps) {
           return (
             <g key={ri}>
               <text x={pos.x + 10} y={midY} fontSize={12.5} fill="#374151">
-                {row.label}
+                <title>{row.label}</title>
+                {truncateName(row.label)}
               </text>
               {isRef ? (
                 <circle cx={exitLeft ? pos.x + 6 : pos.x + BOX_W - 6} cy={rowY + ROW_H / 2} r={3} fill="#5750e8" />
