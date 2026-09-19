@@ -1,6 +1,7 @@
 const { executeCode } = require('../utils/piston');
 const { buildTraceHarness: buildPythonTraceHarness } = require('../utils/pythonTracer');
 const { buildTraceHarness: buildJsTraceHarness } = require('../utils/jsTracer');
+const { buildTraceHarness: buildCppTraceHarness } = require('../utils/cppTracer');
 
 const MAX_CODE_LENGTH = 20000;
 const MAX_STDIN_LENGTH = 5000;
@@ -8,6 +9,7 @@ const MAX_STDIN_LENGTH = 5000;
 const TRACE_BUILDERS = {
     python: { build: buildPythonTraceHarness, pistonLanguage: 'python' },
     javascript: { build: buildJsTraceHarness, pistonLanguage: 'javascript' },
+    'c++': { build: buildCppTraceHarness, pistonLanguage: 'c++' },
 };
 
 /**
@@ -65,7 +67,7 @@ exports.runCode = async (req, res) => {
 
 /**
  * Trace student-submitted code line-by-line for the step visualizer (Pointerwalk).
- * Supports Python and JavaScript.
+ * Supports Python, JavaScript, and C++.
  * POST /api/execution/trace
  */
 exports.traceCode = async (req, res) => {

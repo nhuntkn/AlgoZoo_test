@@ -22,7 +22,7 @@ const MONACO_LANGUAGE_MAP: Record<string, string> = {
   TypeScript: 'typescript',
 }
 
-const VISUALIZABLE_LANGUAGES = ['Python', 'JavaScript']
+const VISUALIZABLE_LANGUAGES = ['Python', 'JavaScript', 'C++']
 
 export function ProblemWorkspace() {
   const { classId = '', problemId = '' } = useParams()

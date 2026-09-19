@@ -10,11 +10,13 @@ const fs = require('fs');
 const path = require('path');
 const { buildTraceHarness: buildPythonTraceHarness } = require('../src/utils/pythonTracer');
 const { buildTraceHarness: buildJsTraceHarness } = require('../src/utils/jsTracer');
+const { buildTraceHarness: buildCppTraceHarness } = require('../src/utils/cppTracer');
 const { executeCode } = require('../src/utils/piston');
 
 const BUILDERS = {
   python: { build: buildPythonTraceHarness, pistonLanguage: 'python' },
   javascript: { build: buildJsTraceHarness, pistonLanguage: 'javascript' },
+  cpp: { build: buildCppTraceHarness, pistonLanguage: 'c++' },
 };
 
 const OUT_DIR = path.join(__dirname, 'tracer-validation-output');
@@ -271,6 +273,77 @@ const CASES = [
     check: (trace) => {
       if (!trace.error) throw new Error('expected an error for calling an undefined function');
       if (trace.error.type !== 'ReferenceError') throw new Error(`expected ReferenceError, got ${trace.error.type}`);
+      if (trace.error.line !== 3) throw new Error(`expected error on line 3, got ${trace.error.line}`);
+    },
+  },
+  // ---- C++ cases (server/src/utils/cppTracer.js — drives gdb/MI, not source instrumentation) ----
+  {
+    name: 'cpp-straight-line',
+    language: 'cpp',
+    code: '#include <iostream>\nint main() {\n    int x = 1;\n    int y = 2;\n    std::cout << x + y << std::endl;\n    return 0;\n}\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (trace.steps.length < 4) throw new Error(`expected >=4 steps, got ${trace.steps.length}`);
+      if (trace.stdout.trim() !== '3') throw new Error(`expected stdout '3', got ${JSON.stringify(trace.stdout)}`);
+    },
+  },
+  {
+    name: 'cpp-function-call',
+    language: 'cpp',
+    code: 'int add(int a, int b) {\n    return a + b;\n}\n\nint main() {\n    int result = add(1, 2);\n    return 0;\n}\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 2) throw new Error(`expected a multi-frame trace, got max ${maxFrameCount(trace)} frame(s)`);
+      if (!hasVarValue(trace, 3)) throw new Error('expected result (3) to appear as a variable value');
+    },
+  },
+  {
+    name: 'cpp-recursive-factorial',
+    language: 'cpp',
+    code: 'int factorial(int n) {\n    if (n <= 1) {\n        return 1;\n    }\n    return n * factorial(n - 1);\n}\n\nint main() {\n    int result = factorial(4);\n    return 0;\n}\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      // main + 4 nested factorial() calls at the deepest point
+      if (maxFrameCount(trace) < 5) throw new Error(`expected recursion depth >=5, got max ${maxFrameCount(trace)} frame(s)`);
+      if (!hasVarValue(trace, 24)) throw new Error('expected result (24 = 4!) to appear as a variable value');
+    },
+  },
+  {
+    name: 'cpp-linked-list-reversal',
+    language: 'cpp',
+    code:
+      'struct Node {\n    int val;\n    Node* next;\n    Node(int v, Node* n) : val(v), next(n) {}\n};\n\n' +
+      'Node* reverse(Node* head) {\n    Node* prev = nullptr;\n    Node* curr = head;\n    while (curr != nullptr) {\n        Node* nxt = curr->next;\n        curr->next = prev;\n        prev = curr;\n        curr = nxt;\n    }\n    return prev;\n}\n\n' +
+      'int main() {\n    Node* c = new Node(3, nullptr);\n    Node* b = new Node(2, c);\n    Node* a = new Node(1, b);\n    Node* newHead = reverse(a);\n    int finalVal = newHead->val;\n    return 0;\n}\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (maxFrameCount(trace) < 2) throw new Error(`expected a multi-frame trace, got max ${maxFrameCount(trace)} frame(s)`);
+      if (!hasHeapType(trace, 'Node')) throw new Error('expected Node objects to appear in the heap, with the real struct name (not a placeholder)');
+      if (!hasVarValue(trace, 3)) throw new Error('expected finalVal (3, reversed head) to appear as a variable value');
+    },
+  },
+  {
+    name: 'cpp-vector',
+    language: 'cpp',
+    code:
+      '#include <vector>\nint sum(std::vector<int> v) {\n    int total = 0;\n    for (int i = 0; i < (int)v.size(); i++) {\n        total += v[i];\n    }\n    return total;\n}\n\n' +
+      'int main() {\n    std::vector<int> nums = {4, 1, 7};\n    int result = sum(nums);\n    return 0;\n}\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (!hasVarValue(trace, 12)) throw new Error('expected result (12) to appear as a variable value');
+      const hasPrettyVector = trace.steps.some((s) =>
+        s.frames.some((f) => f.vars.some(([, v]) => v.kind === 'value' && typeof v.value === 'string' && v.value.includes('std::vector')))
+      );
+      if (!hasPrettyVector) throw new Error('expected std::vector to appear pretty-printed (STL pretty-printers not working)');
+    },
+  },
+  {
+    name: 'cpp-compile-error',
+    language: 'cpp',
+    code: 'int main() {\n    int x = \n    return 0;\n}\n',
+    check: (trace) => {
+      if (!trace.error) throw new Error('expected a compile error for invalid syntax');
+      if (trace.error.type !== 'CompileError') throw new Error(`expected CompileError, got ${trace.error.type}`);
       if (trace.error.line !== 3) throw new Error(`expected error on line 3, got ${trace.error.line}`);
     },
   },

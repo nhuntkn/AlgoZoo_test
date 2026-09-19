@@ -2,7 +2,10 @@
 # The public Piston API now requires a whitelist, so this replaces it for local/dev use.
 #
 # Setup:
-#   1. docker compose -f server/piston/docker-compose.yml up -d
+#   1. docker compose -f server/piston/docker-compose.yml up -d --build
+#      (--build is needed the first time / after Dockerfile changes, since this now
+#      builds a local image with gdb added on top of upstream Piston, rather than
+#      pulling upstream directly — see Dockerfile.)
 #   2. Install the language runtimes you need, e.g.:
 #        curl -X POST http://localhost:2000/api/v2/packages \
 #          -H "Content-Type: application/json" \
@@ -11,7 +14,8 @@
 #   3. server/.env already points PISTON_API_URL at http://localhost:2000/api/v2
 services:
   api:
-    image: ghcr.io/engineer-man/piston
+    build: .
+    image: algozoo-piston-with-gdb
     restart: always
     privileged: true
     ports:
@@ -29,3 +33,10 @@ services:
       # "Sandbox keeper received fatal signal 6" crash. Raise it well above the
       # tracer's own worst-case bound (MAX_STEPS=500 * MAX_HEAP_OBJECTS=150).
       - PISTON_OUTPUT_MAX_SIZE=8388608
+      # Default run timeout (wall clock) is 3000ms. The C++ tracer (server/src/utils/
+      # cppTracer.js) drives gdb through many sequential round-trips per traced step
+      # (list frames, list variables per frame, single-step) — each one is a real pipe
+      # write/read plus ptrace overhead, nested inside Piston's own sandboxing, so it's
+      # meaningfully slower than native execution. Raise generously.
+      - PISTON_RUN_TIMEOUT=15000
+
