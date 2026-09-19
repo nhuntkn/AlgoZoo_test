@@ -46,6 +46,16 @@
 //   "protected" pseudo-child first — recursed through transparently to reach real fields.
 // - MI dash-commands (-stack-list-variables, -var-create, ...) only work sent over real
 //   stdin; passed via `-ex` they return "Undefined command" even in --interpreter=mi2.
+// - `skip -gfile <glob>` (told to fast-forward "step" through STL headers instead of
+//   single-stepping every instruction inside them — essential for anything beyond
+//   trivial STL use, e.g. unordered_map's hash/bucket internals involve vastly more
+//   nested calls than vector's plain indexing, and without this a handful of map
+//   operations in a loop reliably times out) does NOT cross '/' like a recursive glob
+//   would. Most real STL implementation code lives one level deeper than the top-level
+//   header, under bits/ or ext/ (e.g. .../include/c++/10.2.0/bits/unordered_map.h) — a
+//   pattern that doesn't explicitly account for that subdirectory silently matches
+//   nothing, confirmed empirically via `info skip` showing it registered while `step`
+//   still dove straight into bits/unordered_map.h regardless.
 const MAX_STEPS = 300; // gdb stepping is much slower than native execution or sys.settrace
 const MAX_DEPTH = 60;
 const MAX_HEAP_OBJECTS = 150;
@@ -533,6 +543,32 @@ int main() {
     readUntilPrompt(); // consume gdb's own startup banner/prompt before sending anything
     sendCmd("set auto-load safe-path /");
     readUntilPrompt();
+    // Tell gdb to internally fast-forward through STL/library headers during "step"
+    // instead of single-stepping every instruction inside them — critical for anything
+    // beyond trivial STL use (e.g. unordered_map's hash/bucket internals involve many
+    // more nested calls than vector's plain indexing; without this, a handful of map
+    // operations in a loop can take 10+ seconds of real single-stepping and time out).
+    // Patterns must be exact about path depth — gdb's -gfile glob does NOT cross '/'
+    // like a recursive glob would (confirmed empirically: a shallower pattern here
+    // silently matches nothing and "step" still dives into e.g. bits/unordered_map.h).
+    // Most actual STL implementation code lives under a "bits/" (or "ext/") subdirectory
+    // one level deeper than the top-level header itself, so each needs its own pattern.
+    // Harmless if a pattern matches nothing on this system — skip is evaluated lazily
+    // per file as stepping encounters it.
+    for (const char* pattern : {
+      "/usr/include/c++/*/bits/*",
+      "/usr/include/c++/*/ext/*",
+      "/usr/include/c++/*/*",
+      "/usr/include/*/c++/*/bits/*",
+      "/usr/include/*/c++/*/ext/*",
+      "/usr/include/*/c++/*/*",
+      "/piston/packages/gcc/*/include/c++/*/bits/*",
+      "/piston/packages/gcc/*/include/c++/*/ext/*",
+      "/piston/packages/gcc/*/include/c++/*/*",
+    }) {
+      sendCmd(std::string("skip -gfile ") + pattern);
+      readUntilPrompt();
+    }
     sendCmd("break main");
     readUntilPrompt();
     // Redirect the inferior's own stdout/stderr to a file — otherwise its output would

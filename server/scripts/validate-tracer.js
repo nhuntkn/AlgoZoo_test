@@ -338,6 +338,23 @@ const CASES = [
     },
   },
   {
+    // Regression case: unordered_map's hash/bucket internals involve far more nested
+    // library calls per operation than vector's plain indexing. Without gdb's `skip
+    // -gfile` correctly targeting the bits/ subdirectory where that implementation code
+    // actually lives (a real bug found via a live student report — an earlier, shallower
+    // glob pattern silently matched nothing), this reliably timed out on 8 loop
+    // iterations each doing find()/operator[] a couple of times.
+    name: 'cpp-unordered-map-loop',
+    language: 'cpp',
+    code:
+      '#include <unordered_map>\n#include <string>\n#include <algorithm>\nint lengthOfLongestSubstring(std::string s) {\n    int longest = 0;\n    std::unordered_map<char, int> seen;\n    int left = 0;\n    for (int right = 0; right < (int)s.length(); right++) {\n        if (seen.find(s[right]) != seen.end() && seen[s[right]] >= left) {\n            left = seen[s[right]] + 1;\n        }\n        seen[s[right]] = right;\n        longest = std::max(longest, right - left + 1);\n    }\n    return longest;\n}\n\n' +
+      'int main() {\n    int result = lengthOfLongestSubstring("abcabcbb");\n    return 0;\n}\n',
+    check: (trace) => {
+      if (trace.error) throw new Error(`unexpected error: ${JSON.stringify(trace.error)}`);
+      if (!hasVarValue(trace, 3)) throw new Error('expected longest/result (3) to appear as a variable value');
+    },
+  },
+  {
     name: 'cpp-compile-error',
     language: 'cpp',
     code: 'int main() {\n    int x = \n    return 0;\n}\n',
