@@ -21,13 +21,17 @@ const app = express();
 // application database connection establishment
 const connectDatabase = require('../config/connect_db');
 connectDatabase();
+const { APP_BASE_URL } = require('../config/env');
 
 // parse cookies from request
 app.use(cookieParser());
 
+const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+if (APP_BASE_URL) allowedOrigins.push(APP_BASE_URL);
+
 app.use(
     cors({
-      origin: ["http://localhost:5173","http://localhost:5174"],
+      origin: allowedOrigins,
       credentials: true,
     })
   );

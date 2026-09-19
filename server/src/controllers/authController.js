@@ -8,6 +8,7 @@ const ClassMember = require('../models/classMember');
 const validateEmail = require('../validators/emailFormat');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const { baseCookieOptions } = require('../utils/cookieOptions');
 
 /** Register User via Admin Invitation Link (Token-based)
  *  POST /routes/auth/register
@@ -154,14 +155,12 @@ exports.register = async (req, res) => {
         const refreshToken = generateRefreshToken(user._id);
 
         const accessCookieOptions = {
+            ...baseCookieOptions,
             expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
-            httpOnly: true,
-            sameSite: 'strict'
         };
         const refreshCookieOptions = {
+            ...baseCookieOptions,
             expires: getDateAfterDuration(JWT_REFRESH_TOKEN_EXPIRES),
-            httpOnly: true,
-            sameSite: 'strict'
         };
         
 
@@ -291,8 +290,8 @@ exports.refreshToken = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
 
     const options = {
+      ...baseCookieOptions,
       expires: getDateAfterDuration(JWT_ACCESS_TOKEN_EXPIRES),
-      httpOnly: true,
     };
 
     res.cookie('accessToken', accessToken, options);
