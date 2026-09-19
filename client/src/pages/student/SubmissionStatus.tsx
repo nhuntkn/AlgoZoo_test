@@ -126,10 +126,9 @@ export function SubmissionStatus() {
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Problem</span>
               <span className="text-sm font-semibold text-gray-700">{problem.title}</span>
             </div>
-            <div
-              className="text-sm text-gray-700 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: problem.description || 'No description available.' }}
-            />
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              {problem.description || 'No description available.'}
+            </p>
             {problem.problemUrl && (
               <a
                 href={problem.problemUrl}

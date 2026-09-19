@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import {
   ChevronLeft, X, Send, Settings, Lightbulb, Info, AlertCircle,
-  Bold, Italic, Underline, Strikethrough,
-  ChevronDown, Link2, ExternalLink, Undo2, Redo2,
+  ChevronDown, Link2, ExternalLink,
 } from 'lucide-react'
 import { TypeBadge } from './Badge'
 import { Button } from './Button'
@@ -63,22 +62,7 @@ export function ProblemComposer({ mode, initial, onSave, onClose, saving = false
   const [topicOpen, setTopicOpen] = useState(false)
   const [addLinkOpen, setAddLinkOpen] = useState(false)
   const [linkForm, setLinkForm] = useState({ label: '', url: '' })
-  const editorRef = useRef<HTMLDivElement>(null)
   const isEdit = mode === 'edit'
-
-  // Populate contenteditable with initial HTML on mount
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = initial?.description ?? ''
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  /* ── editor commands via execCommand ── */
-  const exec = (command: string, value?: string) => {
-    editorRef.current?.focus()
-    document.execCommand(command, false, value ?? undefined)
-  }
 
   /* ── resource helpers (one link only) ── */
   const link = resources.find((r) => !r.filename && r.url) ?? null
@@ -96,13 +80,12 @@ export function ProblemComposer({ mode, initial, onSave, onClose, saving = false
   /* ── publish ── */
   const handlePublish = async () => {
     const trimmed = title.trim()
-    const descText = editorRef.current?.textContent?.trim() ?? ''
     const missingTitle = !trimmed
-    const missingDescription = !descText
+    const missingDescription = !description.trim()
     setTitleError(missingTitle)
     setDescriptionError(missingDescription)
     if (missingTitle || missingDescription) return
-    await onSave({ title: trimmed, type, difficulty, description: editorRef.current?.innerHTML ?? '', resources })
+    await onSave({ title: trimmed, type, difficulty, description, resources })
   }
 
   return (
@@ -200,27 +183,14 @@ export function ProblemComposer({ mode, initial, onSave, onClose, saving = false
                   ? 'border-red-400'
                   : 'border-gray-200 focus-within:border-accent/40'
               }`}>
-                {/* Toolbar */}
-                <div className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-100 bg-white">
-                  <ToolbarGroup>
-                    <ToolbarBtn icon={<Bold size={13} />} label="Bold" onClick={() => exec('bold')} />
-                    <ToolbarBtn icon={<Italic size={13} />} label="Italic" onClick={() => exec('italic')} />
-                    <ToolbarBtn icon={<Underline size={13} />} label="Underline" onClick={() => exec('underline')} />
-                    <ToolbarBtn icon={<Strikethrough size={13} />} label="Strikethrough" onClick={() => exec('strikeThrough')} />
-                  </ToolbarGroup>
-                  <div className="flex-1" />
-                  <ToolbarGroup>
-                    <ToolbarBtn icon={<Undo2 size={13} />} label="Undo" onClick={() => exec('undo')} />
-                    <ToolbarBtn icon={<Redo2 size={13} />} label="Redo" onClick={() => exec('redo')} />
-                  </ToolbarGroup>
-                </div>
-                {/* Rich text editor area */}
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={() => { setDescription(editorRef.current?.innerHTML ?? ''); setDescriptionError(false) }}
-                  className={`w-full px-4 py-3.5 text-sm text-gray-700 focus:outline-none leading-relaxed min-h-[200px] prose prose-sm max-w-none ${descriptionError ? 'bg-red-50' : 'bg-white'}`}
+                <textarea
+                  value={description}
+                  onChange={(e) => { setDescription(e.target.value); setDescriptionError(false) }}
+                  placeholder="Start writing your problem description here..."
+                  rows={12}
+                  className={`w-full px-4 py-3.5 text-sm text-gray-700 resize-y focus:outline-none leading-relaxed placeholder:text-gray-300 ${
+                    descriptionError ? 'bg-red-50 placeholder:text-red-300' : 'bg-white'
+                  }`}
                 />
               </div>
               {descriptionError && <p className="text-xs text-red-500 mt-1.5">Description is required.</p>}
@@ -426,23 +396,3 @@ export function ProblemComposer({ mode, initial, onSave, onClose, saving = false
   )
 }
 
-/* ── Toolbar helpers ── */
-function ToolbarBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
-  return (
-    <button
-      title={label}
-      onMouseDown={(e) => { e.preventDefault(); onClick?.() }}
-      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-    >
-      {icon}
-    </button>
-  )
-}
-
-function ToolbarGroup({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center gap-0">{children}</div>
-}
-
-function ToolbarDivider() {
-  return <div className="w-px h-4 bg-gray-200 mx-1.5 flex-shrink-0" />
-}

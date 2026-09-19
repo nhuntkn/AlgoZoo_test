@@ -242,10 +242,9 @@ export function TrainerProblems() {
               {detail.description && (
                 <div>
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</p>
-                  <p
-                    className="text-sm text-gray-700 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: detail.description }}
-                  />
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {detail.description}
+                  </p>
                 </div>
               )}
               {detail.resources.length > 0 && (

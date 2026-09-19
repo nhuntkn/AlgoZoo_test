@@ -266,10 +266,9 @@ export function ReviewSubmission() {
             <div className="px-5 py-4 space-y-3">
               {problem ? (
                 <>
-                  <p
-                    className="text-sm text-gray-700 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: problem.description || '' }}
-                  />
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {problem.description || ''}
+                  </p>
                   {problem.resource_url && (
                     <a href={problem.resource_url} target="_blank" rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
