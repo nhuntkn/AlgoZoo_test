@@ -4,7 +4,9 @@ const ClassMember = require('../models/classMember');
 const ClassProblem = require('../models/classProblem');
 const Problem = require('../models/problem');
 const Submission = require('../models/submission');
+const User = require('../models/user');
 const { checkTrainerOwnsClass } = require('../utils/classOwnership');
+const { notifyOne, notifyMany } = require('../utils/notify');
 
 // Helper: class ids a trainer belongs to
 const getTrainerClassIds = async (trainerId) => {
@@ -184,6 +186,21 @@ exports.assignProblemToClass = async (req, res) => {
       deadline: deadline || null,
     });
 
+    // Notify every student in this class that a new problem was assigned.
+    const members = await ClassMember.find({ classId: class_id }).populate('userId', 'role');
+    const studentIds = members
+      .filter((m) => m.userId?.role === 'student')
+      .map((m) => m.userId._id);
+    notifyMany(studentIds, {
+      type: 'ASSIGNMENT_ASSIGNED',
+      title: 'New assignment',
+      message: `You have a new assignment: ${problem.title}`,
+      context: `${cls.name} · ${problem.problemType}`,
+      entityType: 'problem',
+      entityId: classProblem._id,
+      linkTo: `/student/classes/${class_id}/problems/${classProblem._id}`,
+    });
+
     res.status(201).json({
       status: 'success',
       message: 'Problem assigned to class successfully',
@@ -347,6 +364,23 @@ exports.reviewSubmission = async (req, res) => {
     submission.reviewed_by = req.user._id;
     submission.reviewed_at = Date.now();
     await submission.save();
+
+    const [problem, cls] = await Promise.all([
+      Problem.findById(classProblem.problem_id),
+      Class.findById(classProblem.class_id),
+    ]);
+    notifyOne({
+      recipientId: submission.student_id,
+      type: 'GRADE_RELEASED',
+      title: 'Submission graded',
+      message: `Your submission for ${problem?.title ?? 'this problem'} has been graded.`,
+      context: `${cls?.name ?? ''} · ${problem?.problemType ?? ''}`,
+      entityType: 'submission',
+      entityId: submission._id,
+      // SubmissionStatus.tsx is mounted at /student/submissions/:id but actually queries
+      // by class_problem_id (see StudentSubmissions.tsx's own links), not the submission's own _id.
+      linkTo: `/student/submissions/${classProblem._id}`,
+    });
 
     res.status(200).json({
       status: 'success',

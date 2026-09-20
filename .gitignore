@@ -27,5 +27,6 @@ client/.env
 server/.env
 server/uploads/
 server/piston/piston_data/
+server/scripts/tracer-validation-output/
 build/
 dist/

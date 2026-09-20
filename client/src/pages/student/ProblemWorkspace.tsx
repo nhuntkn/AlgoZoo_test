@@ -1,41 +1,219 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  CheckCircle2, ChevronLeft, ChevronRight, Clock,
-  Code2, Eye, ExternalLink, FileImage, FileText, Loader2, MessageSquare, Play, Send, Terminal, X,
+  AlignLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock,
+  Code2, Download, Eye, ExternalLink, FileText, ImageIcon, Loader2,
+  MessageSquare, Paperclip, Play, Plus, Send, Terminal, Trash2,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
-import { CodeEditor } from '../../components/ui/CodeEditor'
+import { Badge, TypeBadge, StatusDot } from '../../components/ui/Badge'
 import { TraceVisualizer } from '../../components/problem/TraceVisualizer'
 import { useAuth } from '../../hooks/useAuth'
 import { studentService } from '../../services/studentService'
 import { executionService } from '../../services/executionService'
-import { uploadFile } from '../../services/fileService'
+import { uploadFile, getFileUrl } from '../../services/fileService'
 import type { StudentProblemDetail } from '../../types/classProblem'
+import type { SubmissionContentBlock } from '../../types/submission'
 import type { RunCodeResult, TraceResult } from '../../types/execution'
 
-const MONACO_LANGUAGE_MAP: Record<string, string> = {
-  Python: 'python',
-  JavaScript: 'javascript',
-  Java: 'java',
-  'C++': 'cpp',
-  TypeScript: 'typescript',
+const VISUALIZABLE_LANGUAGES = ['Python', 'JavaScript', 'C++']
+
+// ── Draft block types ───────────────────────────────────────────────
+type TextBlockDraft = { id: string; type: 'text'; content: string }
+type CodeBlockDraft = { id: string; type: 'code'; content: string; language: string }
+type FileBlockDraft = { id: string; type: 'image' | 'file'; file: File; previewUrl: string; filename: string }
+type BlockDraft = TextBlockDraft | CodeBlockDraft | FileBlockDraft
+
+const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++', 'TypeScript']
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+let _blockId = 0
+const genId = () => String(_blockId++)
+
+// ── Blob URL hook (for submitted attachment preview) ─────────────────
+function useFileBlob(src: string | undefined): string | undefined {
+  const [blobUrl, setBlobUrl] = useState<string | undefined>()
+  useEffect(() => {
+    if (!src) return
+    let active = true
+    let created: string | undefined
+    fetch(src, { credentials: 'include' })
+      .then(r => r.ok ? r.blob() : Promise.reject())
+      .then(b => {
+        if (!active) return
+        created = URL.createObjectURL(b)
+        setBlobUrl(created)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+      if (created) URL.revokeObjectURL(created)
+    }
+  }, [src])
+  return blobUrl
 }
 
+// ── Attachment preview (read-only, for submitted blocks) ─────────────
+function AttachmentPreview({ block }: { block: SubmissionContentBlock }) {
+  const rawSrc = block.file_id ? getFileUrl(block.file_id) : undefined
+  const lower = block.filename?.toLowerCase() ?? ''
+  const showImg = block.type === 'image' || IMAGE_EXTS.some(ext => lower.endsWith(ext))
+  const blobUrl = useFileBlob(showImg ? rawSrc : undefined)
+  const label = block.filename || 'Uploaded file'
+  return (
+    <div className="border-b border-gray-50 last:border-b-0">
+      <div className="flex items-center gap-2 px-5 py-3 bg-gray-50 border-b border-gray-100">
+        {showImg ? <ImageIcon size={13} className="text-gray-400" /> : <Paperclip size={13} className="text-gray-400" />}
+        <span className="text-xs text-gray-500 flex-1 truncate">{label}</span>
+        {blobUrl && (
+          <a href={blobUrl} download={label} className="inline-flex items-center gap-1 text-xs text-accent hover:underline flex-shrink-0">
+            <Download size={12} /> Download
+          </a>
+        )}
+      </div>
+      {showImg && blobUrl && (
+        <div className="px-5 py-4 flex justify-center">
+          <img src={blobUrl} alt={label} className="max-w-full max-h-96 rounded-lg" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Text block editor ────────────────────────────────────────────────
+function TextEditor({ block, onChange, onDelete }: {
+  block: TextBlockDraft; onChange: (v: string) => void; onDelete: () => void
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+        <div className="flex items-center gap-1.5">
+          <AlignLeft size={13} className="text-gray-400" />
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Text</span>
+        </div>
+        <button onClick={onDelete} className="text-gray-300 hover:text-red-400 transition-colors">
+          <Trash2 size={14} />
+        </button>
+      </div>
+      <textarea
+        value={block.content}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Write your explanation, approach, or notes..."
+        rows={4}
+        className="w-full px-4 py-3 text-sm text-gray-700 resize-y focus:outline-none"
+      />
+    </div>
+  )
+}
+
+// ── Code block editor ────────────────────────────────────────────────
+function CodeEditor({ block, onChange, onLangChange, onDelete }: {
+  block: CodeBlockDraft; onChange: (v: string) => void; onLangChange: (v: string) => void; onDelete: () => void
+}) {
+  return (
+    <div className="rounded-xl overflow-hidden bg-[#1e1e2e]">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+        <div className="flex items-center gap-1.5">
+          <Code2 size={13} className="text-gray-400" />
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Code</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={block.language}
+            onChange={e => onLangChange(e.target.value)}
+            className="bg-white/10 text-gray-300 text-xs rounded-lg px-2 py-1 border border-white/20 focus:outline-none cursor-pointer"
+          >
+            {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <button onClick={onDelete} className="text-gray-500 hover:text-red-400 transition-colors">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+      <textarea
+        value={block.content}
+        onChange={e => onChange(e.target.value)}
+        rows={12}
+        placeholder={`Paste your ${block.language} code here...`}
+        className="w-full px-4 py-4 text-sm text-gray-100 font-mono resize-y focus:outline-none bg-transparent"
+      />
+    </div>
+  )
+}
+
+// ── File/Image block editor ──────────────────────────────────────────
+function FileEditor({ block, onDelete }: { block: FileBlockDraft; onDelete: () => void }) {
+  const isImage = block.type === 'image'
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {isImage ? <ImageIcon size={13} className="text-gray-400 flex-shrink-0" /> : <Paperclip size={13} className="text-gray-400 flex-shrink-0" />}
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">
+            {isImage ? 'Image' : 'File'}
+          </span>
+          <span className="text-xs text-gray-500 ml-1 truncate">{block.filename}</span>
+        </div>
+        <button onClick={onDelete} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 ml-2">
+          <Trash2 size={14} />
+        </button>
+      </div>
+      {isImage ? (
+        <div className="px-4 py-3 flex justify-center">
+          <img src={block.previewUrl} alt={block.filename} className="max-w-full max-h-64 rounded-lg object-contain" />
+        </div>
+      ) : (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
+          <Paperclip size={14} className="text-gray-400" /> {block.filename}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Block type picker (which types show depends on problem type) ─────
+function BlockPicker({ onAddText, onAddCode, onAddFile }: {
+  onAddText?: () => void; onAddCode?: () => void; onAddFile: () => void
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {onAddText && (
+        <button
+          onClick={onAddText}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:border-accent/50 hover:text-accent transition-colors shadow-sm"
+        >
+          <AlignLeft size={13} /> Text
+        </button>
+      )}
+      {onAddCode && (
+        <button
+          onClick={onAddCode}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:border-accent/50 hover:text-accent transition-colors shadow-sm"
+        >
+          <Code2 size={13} /> Code
+        </button>
+      )}
+      <button
+        onClick={onAddFile}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:border-accent/50 hover:text-accent transition-colors shadow-sm"
+      >
+        <Paperclip size={13} /> Image / File
+      </button>
+    </div>
+  )
+}
+
+// ── Main page ────────────────────────────────────────────────────────
 export function ProblemWorkspace() {
   const { classId = '', problemId = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+
   const [detail, setDetail] = useState<StudentProblemDetail | null>(null)
   const [className, setClassName] = useState('')
-  const [content, setContent] = useState('')
-  const [language, setLanguage] = useState('Python')
-  const [proofFile, setProofFile] = useState<File | null>(null)
-  const [proofPreview, setProofPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // DSA-only: running/visualizing whichever code block is present
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<RunCodeResult | null>(null)
   const [runError, setRunError] = useState('')
@@ -45,55 +223,94 @@ export function ProblemWorkspace() {
   const [tracedCode, setTracedCode] = useState<string | null>(null)
   const [traceError, setTraceError] = useState('')
 
+  // Draft blocks for the solution editor
+  const [blocks, setBlocks] = useState<BlockDraft[]>([])
+  const [showBlockPicker, setShowBlockPicker] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const blocksRef = useRef<BlockDraft[]>([])
+  blocksRef.current = blocks
+
+  // Revoke all file preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      for (const b of blocksRef.current) {
+        if (b.type === 'image' || b.type === 'file') {
+          URL.revokeObjectURL((b as FileBlockDraft).previewUrl)
+        }
+      }
+    }
+  }, [])
+
   useEffect(() => {
     studentService.getProblem(problemId)
-      .then((response) => setDetail(response.data))
-      .catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'Unable to load problem'))
+      .then(res => setDetail(res.data))
+      .catch(err => setError(err instanceof Error ? err.message : 'Unable to load problem'))
       .finally(() => setLoading(false))
 
     studentService.getClasses()
-      .then((response) => {
-        const current = response.data.find((c) => c.classId === classId)
+      .then(res => {
+        const current = res.data.find(c => c.classId === classId)
         if (current) setClassName(current.name)
       })
       .catch(() => {})
   }, [problemId, classId])
 
-  // Preview is a blob URL, not a data URL — needs revoking whenever it's replaced or the component unmounts.
-  useEffect(() => {
-    return () => {
-      if (proofPreview) URL.revokeObjectURL(proofPreview)
-    }
-  }, [proofPreview])
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null
-    setProofFile(file)
-    setProofPreview((previous) => {
-      if (previous) URL.revokeObjectURL(previous)
-      return file ? URL.createObjectURL(file) : null
-    })
+  // Block management
+  const addTextBlock = () => {
+    setBlocks(prev => [...prev, { id: genId(), type: 'text', content: '' }])
+    setShowBlockPicker(false)
   }
-
-  const clearProofFile = () => {
-    setProofFile(null)
-    setProofPreview((previous) => {
-      if (previous) URL.revokeObjectURL(previous)
-      return null
-    })
+  const addCodeBlock = () => {
+    setBlocks(prev => [...prev, { id: genId(), type: 'code', content: '', language: 'Python' }])
+    setShowBlockPicker(false)
+  }
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+    setShowBlockPicker(false)
+  }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const isImage = file.type.startsWith('image/')
+    setBlocks(prev => [...prev, {
+      id: genId(),
+      type: isImage ? 'image' : 'file',
+      file,
+      previewUrl: URL.createObjectURL(file),
+      filename: file.name,
+    }])
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
+  const updateBlock = (id: string, updates: Partial<BlockDraft>) => {
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } as BlockDraft : b))
+  }
+  const removeBlock = (id: string) => {
+    setBlocks(prev => {
+      const b = prev.find(x => x.id === id)
+      if (b && (b.type === 'image' || b.type === 'file')) {
+        URL.revokeObjectURL((b as FileBlockDraft).previewUrl)
+      }
+      return prev.filter(x => x.id !== id)
+    })
+  }
+
+  // DSA problems are the only ones that get a code block at all (see BlockPicker
+  // restriction below), so Run/Visualize just needs to find it — there's no separate
+  // problemType check needed here.
+  const codeBlock = blocks.find((b): b is CodeBlockDraft => b.type === 'code')
 
   const handleRun = async () => {
-    if (!content.trim() || running) return
+    if (!codeBlock || !codeBlock.content.trim() || running) return
     setRunning(true)
     setRunError('')
     setRunResult(null)
     try {
-      const response = await executionService.run({ language, code: content })
+      const response = await executionService.run({ language: codeBlock.language, code: codeBlock.content })
       setRunResult(response.data)
       const succeeded = response.data.exitCode === 0 && !response.data.stderr && !response.data.compile?.stderr
-      setLastSuccessfulRun(succeeded ? { code: content, language } : null)
+      setLastSuccessfulRun(succeeded ? { code: codeBlock.content, language: codeBlock.language } : null)
     } catch (requestError) {
       setRunError(requestError instanceof Error ? requestError.message : 'Unable to run code')
       setLastSuccessfulRun(null)
@@ -102,16 +319,21 @@ export function ProblemWorkspace() {
     }
   }
 
-  const canVisualize = language === 'Python' && lastSuccessfulRun?.code === content && lastSuccessfulRun?.language === language
+  const canVisualize = Boolean(
+    codeBlock &&
+    VISUALIZABLE_LANGUAGES.includes(codeBlock.language) &&
+    lastSuccessfulRun?.code === codeBlock.content &&
+    lastSuccessfulRun?.language === codeBlock.language
+  )
 
   const handleVisualize = async () => {
-    if (!canVisualize || visualizing) return
+    if (!codeBlock || !canVisualize || visualizing) return
     setVisualizing(true)
     setTraceError('')
     try {
-      const response = await executionService.trace({ code: content })
+      const response = await executionService.trace({ code: codeBlock.content, language: codeBlock.language })
       setTraceResult(response.data)
-      setTracedCode(content)
+      setTracedCode(codeBlock.content)
     } catch (requestError) {
       setTraceError(requestError instanceof Error ? requestError.message : 'Unable to visualize code')
     } finally {
@@ -120,42 +342,75 @@ export function ProblemWorkspace() {
   }
 
   const submit = async () => {
-    if (!content.trim() || submitting) return
-    if (problemType === 'DSA' && !proofFile) {
-      setError('DSA submissions require a screenshot or solution file.')
+    if (submitting || !detail) return
+    const hasContent = blocks.some(b =>
+      b.type === 'text' ? b.content.trim() !== '' :
+      b.type === 'code' ? b.content.trim() !== '' : true
+    )
+    if (blocks.length === 0 || !hasContent) {
+      setError('Please add at least one content block.')
       return
+    }
+    const rawType = detail.problem?.problemType as string ?? ''
+    const pType = rawType === 'DB' ? 'Database' : rawType === 'OTHER' ? 'Other' : rawType
+    if (pType === 'DSA') {
+      const hasCode = blocks.some(b => b.type === 'code' && b.content.trim())
+      const hasFile = blocks.some(b => b.type === 'image' || b.type === 'file')
+      if (!hasCode || !hasFile) {
+        setError('DSA submissions require a code block and a screenshot or solution file.')
+        return
+      }
     }
     setSubmitting(true)
     setError('')
     try {
-      const blocks: Array<{ type: 'code' | 'image' | 'file'; content?: string; language?: string; file_id?: string; filename?: string }> = [
-        { type: 'code', content, language },
-      ]
-      if (proofFile) {
-        const uploaded = await uploadFile(proofFile)
-        const blockType = proofFile.type.startsWith('image/') ? 'image' : 'file'
-        blocks.push({ type: blockType, file_id: uploaded.data.file_id, filename: uploaded.data.filename })
+      const contentBlocks: Array<{ type: 'code' | 'text' | 'image' | 'file'; content?: string; language?: string; file_id?: string; filename?: string }> = []
+      for (const b of blocks) {
+        if (b.type === 'text') {
+          contentBlocks.push({ type: 'text', content: b.content })
+        } else if (b.type === 'code') {
+          contentBlocks.push({ type: 'code', content: b.content, language: b.language })
+        } else {
+          const uploaded = await uploadFile(b.file)
+          contentBlocks.push({ type: b.type, file_id: uploaded.data.file_id, filename: uploaded.data.filename })
+        }
       }
-      await studentService.createSubmission({ class_problem_id: problemId, content_blocks: blocks })
+      await studentService.createSubmission({ class_problem_id: problemId, content_blocks: contentBlocks })
       navigate(`/student/classes/${classId}/problems`)
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to submit solution')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to submit solution')
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (loading) return <div className="py-16 flex justify-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Loading problem...</div>
-  if (error && !detail) return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
-  if (!detail || !detail.problem) return <p className="text-sm text-gray-500">Problem not found.</p>
+  // ── Loading / error / empty states ───────────────────────────────
+  if (loading) {
+    return (
+      <div className="py-16 flex justify-center gap-2 text-sm text-gray-400">
+        <Loader2 size={16} className="animate-spin" /> Loading problem...
+      </div>
+    )
+  }
+  if (error && !detail) {
+    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+  }
+  if (!detail || !detail.problem) {
+    return <p className="text-sm text-gray-500">Problem not found.</p>
+  }
 
   const problem = detail.problem
   const rawType = problem.problemType as string
   const problemType = rawType === 'DB' ? 'Database' : rawType === 'OTHER' ? 'Other' : rawType
+  const isDSA = problemType === 'DSA'
   const submitted = Boolean(detail.submission)
   const submission = detail.submission
 
-  const formatSubmitDate = (dateStr: string) => {
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  }
+  const formatDateTime = (dateStr: string) => {
     const d = new Date(dateStr)
     return (
       d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
@@ -163,9 +418,21 @@ export function ProblemWorkspace() {
       d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     )
   }
-
   const formatShortDate = (dateStr: string | null) =>
     dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+
+  const statusKey = !detail.status ? 'not-started' :
+    detail.status === 'Pending' ? 'pending' :
+    detail.status === 'Late' ? 'late' :
+    detail.status === 'Reviewed' ? 'reviewed' : 'not-started'
+
+  const statusLabel = !detail.status ? 'Not started' :
+    detail.status === 'Pending' ? 'Pending review' : detail.status
+
+  const canSubmit = !submitting && blocks.some(b =>
+    b.type === 'text' ? b.content.trim() !== '' :
+    b.type === 'code' ? b.content.trim() !== '' : true
+  )
 
   return (
     <div>
@@ -196,10 +463,15 @@ export function ProblemWorkspace() {
       {/* Page title */}
       <h1 className="text-2xl font-bold text-gray-900 mb-6">{problem.title}</h1>
 
-      {/* Main layout */}
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf" onChange={handleFileChange} className="hidden" />
+
+      {/* Main 2-column layout */}
       <div className="flex flex-col lg:grid lg:grid-cols-[1fr_300px] gap-5">
-        {/* Left: problem card + my solution */}
+
+        {/* ── Left column ─────────────────────────────────────────── */}
         <div className="space-y-4">
+
           {/* Problem card */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -207,9 +479,9 @@ export function ProblemWorkspace() {
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Problem</span>
               <span className="text-sm font-semibold text-gray-700">{problem.title}</span>
             </div>
-            <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
               {problem.description || 'No description available.'}
-            </div>
+            </p>
             {problem.problemUrl && (
               <a
                 href={problem.problemUrl}
@@ -222,8 +494,9 @@ export function ProblemWorkspace() {
             )}
           </div>
 
-          {/* My Solution (when submitted) */}
-          {submitted && submission && (
+          {/* My Solution */}
+          {submitted && submission ? (
+            /* Read-only submitted view */
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
                 <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -257,189 +530,252 @@ export function ProblemWorkspace() {
                       <pre className="px-4 py-4 text-sm text-gray-100 overflow-x-auto font-mono leading-relaxed">{block.content}</pre>
                     </div>
                   )}
+                  {(block.type === 'image' || block.type === 'file') && (
+                    <AttachmentPreview block={block} />
+                  )}
                 </div>
               ))}
+            </div>
+          ) : (
+            /* Multi-block solution editor — code blocks only for DSA problems */
+            <div>
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {user?.initials || 'ME'}
+                </div>
+                <span className="font-semibold text-gray-900">My Solution</span>
+              </div>
+
+              {isDSA && (
+                <p className="mb-3 text-xs text-gray-500">DSA submissions require a code block and a screenshot or solution file.</p>
+              )}
+
+              <div className="space-y-3">
+                {/* Existing blocks */}
+                {blocks.map(block => (
+                  <div key={block.id}>
+                    {block.type === 'text' && (
+                      <TextEditor
+                        block={block}
+                        onChange={v => updateBlock(block.id, { content: v })}
+                        onDelete={() => removeBlock(block.id)}
+                      />
+                    )}
+                    {block.type === 'code' && (
+                      <>
+                        <CodeEditor
+                          block={block}
+                          onChange={v => updateBlock(block.id, { content: v })}
+                          onLangChange={v => updateBlock(block.id, { language: v })}
+                          onDelete={() => removeBlock(block.id)}
+                        />
+                        {block.id === codeBlock?.id && (
+                          <div className="mt-2 bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+                            <div className="flex items-center gap-2">
+                              <Button type="button" variant="secondary" size="sm" onClick={handleRun} disabled={!block.content.trim() || running}>
+                                {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                                {running ? 'Running...' : 'Run Code'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleVisualize}
+                                disabled={!canVisualize || visualizing}
+                                title={
+                                  !VISUALIZABLE_LANGUAGES.includes(block.language)
+                                    ? `Visualization is available for ${VISUALIZABLE_LANGUAGES.join(', ')} only`
+                                    : !canVisualize
+                                      ? 'Run your code successfully first'
+                                      : undefined
+                                }
+                              >
+                                {visualizing ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+                                {visualizing ? 'Visualizing...' : 'Visualize'}
+                              </Button>
+                            </div>
+                            {!VISUALIZABLE_LANGUAGES.includes(block.language) && (
+                              <p className="mt-2 text-xs text-gray-400">Step-by-step visualization is available for {VISUALIZABLE_LANGUAGES.join(', ')} only, for now.</p>
+                            )}
+                            {runError && <p className="mt-2 text-sm text-red-600">{runError}</p>}
+                            {runResult && (
+                              <div className="mt-3 rounded-xl overflow-hidden bg-[#1e1e2e] text-sm font-mono">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+                                  <div className="flex items-center gap-1.5">
+                                    <Terminal size={13} className="text-gray-400" />
+                                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Output</span>
+                                  </div>
+                                  <span className="text-xs text-gray-400">
+                                    {runResult.language} {runResult.version} · exit {runResult.exitCode ?? '—'}
+                                  </span>
+                                </div>
+                                {runResult.compile?.stderr && (
+                                  <pre className="px-4 pt-3 text-amber-300 whitespace-pre-wrap break-words">{runResult.compile.stderr}</pre>
+                                )}
+                                <pre className="px-4 py-3 text-gray-100 whitespace-pre-wrap break-words">
+                                  {runResult.stdout || <span className="text-gray-500">(no output)</span>}
+                                </pre>
+                                {runResult.stderr && (
+                                  <pre className="px-4 pb-3 text-red-400 whitespace-pre-wrap break-words">{runResult.stderr}</pre>
+                                )}
+                              </div>
+                            )}
+                            {traceError && <p className="mt-3 text-sm text-red-600">{traceError}</p>}
+                            {traceResult && tracedCode === block.content && (
+                              <div className="mt-3">
+                                <TraceVisualizer code={block.content} trace={traceResult} language={block.language} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {(block.type === 'image' || block.type === 'file') && (
+                      <FileEditor
+                        block={block as FileBlockDraft}
+                        onDelete={() => removeBlock(block.id)}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                {/* Block picker — empty state or "Add content"; code blocks are DSA-only,
+                    text blocks are for every other problem type */}
+                {blocks.length === 0 ? (
+                  <div className="bg-white rounded-2xl shadow-sm px-5 py-6">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Add content block</p>
+                    <BlockPicker
+                      onAddText={isDSA ? undefined : addTextBlock}
+                      onAddCode={isDSA ? addCodeBlock : undefined}
+                      onAddFile={triggerFileInput}
+                    />
+                  </div>
+                ) : showBlockPicker ? (
+                  <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Add content block</p>
+                    <BlockPicker
+                      onAddText={isDSA ? undefined : addTextBlock}
+                      onAddCode={isDSA ? addCodeBlock : undefined}
+                      onAddFile={triggerFileInput}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowBlockPicker(true)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-gray-200 text-sm text-gray-400 hover:border-accent/50 hover:text-accent transition-colors"
+                  >
+                    <Plus size={14} /> Add content
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Right sidebar */}
+        {/* ── Right sidebar ────────────────────────────────────────── */}
         <div className="space-y-4">
-          {submitted && submission ? (
-            <>
-              {/* Submission Info */}
-              <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4 text-sm">
-                <h3 className="font-semibold text-gray-900">Submission Info</h3>
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Problem</p>
-                  <p className="font-medium text-gray-900">{problem.title}</p>
+
+          {/* Problem Info card */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4 text-sm">
+            <h3 className="font-semibold text-gray-900">Problem Info</h3>
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">Topic</p>
+              <TypeBadge type={problemType} />
+            </div>
+            {problem.difficulty && (
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">Difficulty</p>
+                <Badge variant={problem.difficulty.toLowerCase()}>{problem.difficulty}</Badge>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">Deadline</p>
+              <p className="font-medium text-gray-900">
+                {detail.deadline ? formatDate(detail.deadline) : 'No deadline'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Status</p>
+              <span className="inline-flex items-center text-sm font-medium text-gray-700">
+                <StatusDot status={statusKey} />{statusLabel}
+              </span>
+            </div>
+          </div>
+
+          {/* Trainer Feedback card */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 text-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare size={14} className="text-gray-400 flex-shrink-0" />
+              <h3 className="font-semibold text-gray-900">Trainer Feedback</h3>
+            </div>
+            {!submitted ? (
+              /* No submission yet */
+              <div className="flex flex-col items-center py-4 text-center">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                  <MessageSquare size={18} className="text-gray-300" />
                 </div>
-                {className && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Class</p>
-                    <p className="font-medium text-gray-900">{className}</p>
+                <p className="font-medium text-gray-700 text-sm mb-1">Not submitted yet</p>
+                <p className="text-xs text-gray-400 leading-relaxed">Submit your solution to receive feedback from your trainer.</p>
+              </div>
+            ) : submission?.feedback ? (
+              /* Has feedback */
+              <>
+                {submission.reviewedBy && (
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {submission.reviewedBy.fullname
+                        .split(' ').filter(Boolean).slice(0, 2)
+                        .map(n => n[0]?.toUpperCase() || '').join('')}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{submission.reviewedBy.fullname}</p>
+                      <p className="text-xs text-gray-400">{formatShortDate(submission.reviewedAt)}</p>
+                    </div>
                   </div>
                 )}
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Submitted</p>
-                  <p className="font-medium text-gray-900">{formatSubmitDate(submission.createdAt)}</p>
+                <p className="text-gray-700 leading-relaxed">{submission.feedback}</p>
+              </>
+            ) : (
+              /* Submitted but no feedback yet */
+              <div className="flex flex-col items-center py-4 text-center">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                  <Clock size={18} className="text-gray-300" />
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Status</p>
-                  {detail.status === 'Reviewed' ? (
-                    <span className="inline-flex items-center gap-1 text-green-600 font-medium">
-                      <CheckCircle2 size={13} /> Reviewed
-                    </span>
-                  ) : detail.status === 'Pending' ? (
-                    <span className="inline-flex items-center gap-1 text-amber-500 font-medium">
-                      <Clock size={13} /> Pending review
-                    </span>
-                  ) : detail.status === 'Late' ? (
-                    <span className="inline-flex items-center gap-1 text-orange-500 font-medium">
-                      <Clock size={13} /> Late
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </div>
+                <p className="font-medium text-gray-700 text-sm mb-1">Awaiting feedback</p>
+                <p className="text-xs text-gray-400 leading-relaxed">Your trainer hasn't reviewed your solution yet.</p>
               </div>
+            )}
+          </div>
 
-              {/* Trainer Feedback */}
-              {submission.feedback && (
-                <div className="bg-white rounded-2xl shadow-sm p-5 text-sm">
-                  <div className="flex items-center gap-2 mb-4">
-                    <MessageSquare size={14} className="text-gray-400 flex-shrink-0" />
-                    <h3 className="font-semibold text-gray-900">Trainer Feedback</h3>
-                  </div>
-                  {submission.reviewedBy && (
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {submission.reviewedBy.fullname
-                          .split(' ')
-                          .filter(Boolean)
-                          .slice(0, 2)
-                          .map((n) => n[0]?.toUpperCase() || '')
-                          .join('')}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{submission.reviewedBy.fullname}</p>
-                        <p className="text-xs text-gray-400">{formatShortDate(submission.reviewedAt)}</p>
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-gray-700 leading-relaxed">{submission.feedback}</p>
-                </div>
-              )}
-            </>
-          ) : (
-            /* Submit Solution form */
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h2 className="font-bold text-gray-900 mb-1">Submit Solution</h2>
-              <p className="text-xs text-gray-400 mb-4">
-                Deadline: {detail.deadline ? new Date(detail.deadline).toLocaleString() : 'No deadline'}
-              </p>
-              <select
-                value={language}
-                onChange={(event) => setLanguage(event.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3"
+          {/* Submit Solution — only when not yet submitted */}
+          {!submitted && (
+            <div>
+              {error && <p className="mb-3 text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+              <Button
+                onClick={submit}
+                disabled={!canSubmit}
+                className="w-full justify-center"
               >
-                <option>Python</option>
-                <option>JavaScript</option>
-                <option>Java</option>
-                <option>C++</option>
-                <option>TypeScript</option>
-              </select>
-              <CodeEditor
-                value={content}
-                onChange={setContent}
-                language={MONACO_LANGUAGE_MAP[language] || 'plaintext'}
-              />
-              <div className="flex items-center gap-2 mt-3">
-                <Button type="button" variant="secondary" size="sm" onClick={handleRun} disabled={!content.trim() || running}>
-                  {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                  {running ? 'Running...' : 'Run Code'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleVisualize}
-                  disabled={!canVisualize || visualizing}
-                  title={
-                    language !== 'Python'
-                      ? 'Visualization is available for Python only'
-                      : !canVisualize
-                        ? 'Run your code successfully first'
-                        : undefined
-                  }
-                >
-                  {visualizing ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
-                  {visualizing ? 'Visualizing...' : 'Visualize'}
-                </Button>
-              </div>
-              {language !== 'Python' && (
-                <p className="mt-2 text-xs text-gray-400">Step-by-step visualization is available for Python only, for now.</p>
-              )}
-              {runError && <p className="mt-2 text-sm text-red-600">{runError}</p>}
-              {runResult && (
-                <div className="mt-3 rounded-xl overflow-hidden bg-[#1e1e2e] text-sm font-mono">
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
-                    <div className="flex items-center gap-1.5">
-                      <Terminal size={13} className="text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Output</span>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {runResult.language} {runResult.version} · exit {runResult.exitCode ?? '—'}
-                    </span>
-                  </div>
-                  {runResult.compile?.stderr && (
-                    <pre className="px-4 pt-3 text-amber-300 whitespace-pre-wrap break-words">{runResult.compile.stderr}</pre>
-                  )}
-                  <pre className="px-4 py-3 text-gray-100 whitespace-pre-wrap break-words">
-                    {runResult.stdout || <span className="text-gray-500">(no output)</span>}
-                  </pre>
-                  {runResult.stderr && (
-                    <pre className="px-4 pb-3 text-red-400 whitespace-pre-wrap break-words">{runResult.stderr}</pre>
-                  )}
-                </div>
-              )}
-              {traceError && <p className="mt-3 text-sm text-red-600">{traceError}</p>}
-              {traceResult && tracedCode === content && (
-                <div className="mt-3">
-                  <TraceVisualizer code={content} trace={traceResult} />
-                </div>
-              )}
-              <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.pdf" onChange={handleFileChange} className="hidden" />
-              {proofPreview ? (
-                <div className="mt-3 relative">
-                  {proofFile?.type === 'application/pdf' ? (
-                    <iframe src={proofPreview} title="PDF preview" className="w-full h-64 rounded-xl border border-gray-200 bg-gray-50" />
-                  ) : (
-                    <img src={proofPreview} alt="Submission preview" className="w-full max-h-48 rounded-xl border border-gray-200 object-contain bg-gray-50" />
-                  )}
-                  <button
-                    type="button"
-                    onClick={clearProofFile}
-                    className="absolute top-2 right-2 bg-white/90 rounded-full p-1 text-gray-500 hover:text-gray-800 shadow-sm"
-                  >
-                    <X size={14} />
-                  </button>
-                  <p className="mt-1 text-xs text-gray-500 truncate">{proofFile?.name}</p>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-500 hover:border-accent/50 hover:text-accent"
-                >
-                  <FileImage size={16} /> {proofFile ? 'Replace screenshot or file' : 'Add screenshot or solution file'}
-                </button>
-              )}
-              {problemType === 'DSA' && <p className="mt-2 text-xs text-gray-500">DSA submissions require code plus a screenshot or solution file.</p>}
-              {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-              <Button onClick={submit} disabled={!content.trim() || submitting || (problemType === 'DSA' && !proofFile)} className="mt-4 w-full justify-center">
                 <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Solution'}
               </Button>
+            </div>
+          )}
+
+          {/* Submission info when already submitted */}
+          {submitted && submission && (
+            <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 text-sm">
+              <h3 className="font-semibold text-gray-900">Submission Info</h3>
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Submitted</p>
+                <p className="font-medium text-gray-900">{formatDateTime(submission.createdAt)}</p>
+              </div>
+              {submission.isLate && (
+                <div>
+                  <span className="inline-flex items-center gap-1 text-orange-500 font-medium text-xs">
+                    <Clock size={12} /> Submitted late
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -13,7 +13,7 @@ const MAX_STRING_LEN = 300;
 function buildTraceHarness(studentCode) {
   const encoded = Buffer.from(studentCode, 'utf-8').toString('base64');
 
-  return `import sys, json, io, base64
+  return `import sys, json, io, base64, types, math
 
 MAX_STEPS = ${MAX_STEPS}
 MAX_DEPTH = ${MAX_DEPTH}
@@ -39,9 +39,37 @@ def _clip_str(s):
     return s if len(s) <= MAX_STRING_LEN else s[:MAX_STRING_LEN] + "..."
 
 
+# Functions/classes/modules technically have a __dict__ (usually empty), which would
+# otherwise make _serialize treat them as heap objects. Every module-level function
+# definition shows up as a local in the <module> frame, so without this every trace
+# would show a meaningless empty box for each function the student defined. These
+# aren't the data the visualizer is meant to show, so render them as a plain label
+# instead of a heap ref.
+def _is_opaque_callable(v):
+    return isinstance(v, (types.FunctionType, types.BuiltinFunctionType, types.MethodType, type, types.ModuleType))
+
+
+def _opaque_label(v):
+    # No name here on purpose: the variable holding it is almost always named the
+    # same thing (def foo(): ... binds foo to itself), and repeating a long name next
+    # to itself in a narrow box just makes the two overlap and become unreadable.
+    if isinstance(v, type):
+        return "<class>"
+    if isinstance(v, types.ModuleType):
+        return "<module>"
+    return "<function>"
+
+
 def _serialize(v, heap, seen):
+    # json.dumps emits float("inf")/float("-inf")/float("nan") as the bare tokens
+    # Infinity/-Infinity/NaN, which are valid to Python's own parser but not to
+    # JSON.parse on the client, breaking the whole trace. Render them as labels instead.
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return {"kind": "value", "value": "NaN" if math.isnan(v) else ("Infinity" if v > 0 else "-Infinity")}
     if _is_primitive(v):
         return {"kind": "value", "value": _clip_str(v) if isinstance(v, str) else v}
+    if _is_opaque_callable(v):
+        return {"kind": "value", "value": _opaque_label(v)}
 
     key = str(id(v))
     if key in seen:

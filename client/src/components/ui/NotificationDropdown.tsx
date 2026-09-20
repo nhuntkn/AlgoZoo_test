@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Bell, CheckCheck } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNotifications, formatRelative } from '../../context/NotificationContext'
-import type { Notification } from '../../context/NotificationContext'
+import type { Notification } from '../../types/notification'
 
 function NotifRow({ n, onClose }: { n: Notification; onClose: () => void }) {
   const { markRead } = useNotifications()
@@ -30,7 +30,7 @@ function NotifRow({ n, onClose }: { n: Notification; onClose: () => void }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-bold text-gray-900 truncate">{n.title}</span>
-          <span className="text-[10px] text-gray-400 flex-shrink-0">{formatRelative(n.createdAt)}</span>
+          <span className="text-[10px] text-gray-400 flex-shrink-0">{formatRelative(new Date(n.createdAt))}</span>
         </div>
         <p className="text-xs text-gray-600 mt-0.5 truncate">{n.message}</p>
         {n.context && (
@@ -47,7 +47,7 @@ interface NotificationDropdownProps {
 
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
   const { user } = useAuth()
-  const { getForRole, getUnreadCount, markAllRead } = useNotifications()
+  const { notifications, getUnreadCount, markAllRead } = useNotifications()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -62,8 +62,8 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
 
   if (!user) return null
 
-  const notifs = getForRole(user.role)
-  const unreadCount = getUnreadCount(user.role)
+  const notifs = notifications
+  const unreadCount = getUnreadCount()
 
   return (
     <div
@@ -83,7 +83,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
         </div>
         {unreadCount > 0 && (
           <button
-            onClick={() => markAllRead(user.role)}
+            onClick={() => markAllRead()}
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-accent font-medium transition-colors"
           >
             <CheckCheck size={13} /> Mark all read
