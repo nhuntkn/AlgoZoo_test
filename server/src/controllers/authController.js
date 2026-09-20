@@ -227,7 +227,7 @@ exports.register = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, inviteToken } = req.body;
         // validate email and password
         if (!email || !password) {
             return res.status(400).json({ 
@@ -253,6 +253,45 @@ exports.loginUser = async (req, res) => {
             return res.status(401).json({ 
                 status: 'error', 
                 message: 'User password is incorrect' });
+        }
+
+        // A login started from admin's invitation link also add student or trainer as
+        // class member to a class
+        if (inviteToken) {
+            const classDoc = await Class.findOne({ 
+                $or: [
+                    { 'studentJoinToken': inviteToken ,
+                      'studentJoinTokenExpiresAt': { $gt: new Date()} }, // student invite token must not be expired
+                    {
+                        'trainerInviteToken': inviteToken,
+                        'trainerInviteTokenExpiresAt': { $gt: new Date() } // trainer invite token must not be expired
+                    }
+                ],
+                isActive: true, // class must be active for student and trainer to be able to join
+             });
+
+             if (!classDoc) {
+                 return res.status(404).json({
+                     status: 'error',
+                     message: 'Class not found or inactive, invite token is invalid or expired'
+                 });
+             }
+
+             const inviteType = classDoc.studentJoinToken === inviteToken ? 'student' : 'trainer';
+
+             if (user.role !== inviteType) {
+                 return res.status(403).json({
+                     status: 'error',
+                     message: `User role does not match the invite type: expected ${inviteType}, got ${user.role}`
+                 });
+             }
+
+            await ClassMember.updateOne(
+                { classId: classDoc._id, userId: user._id },
+                { $setOnInsert: { classId: classDoc._id, userId: user._id } },
+                { upsert: true }
+            );
+            return loginResponse(res, user);
         }
 
         return loginResponse(res, user);
