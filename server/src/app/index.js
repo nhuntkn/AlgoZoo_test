@@ -14,6 +14,7 @@ const problemRoute = require('../routes/problemRoutes');
 const classRoute = require('../routes/classRoutes');
 const studentRoute = require('../routes/studentRoutes');
 const executionRoute = require('../routes/executionRoutes');
+const notificationRoute = require('../routes/notificationRoutes');
 
 // initialize express app
 const app = express();
@@ -49,5 +50,6 @@ app.use('/api', problemRoute); // problem bank routes
 app.use('/api/classes', classRoute); // class routes
 app.use('/api/student', studentRoute); //student routes
 app.use('/api/execution', executionRoute); //code execution (run) routes
+app.use('/api', notificationRoute); // notification routes
 
 module.exports=app

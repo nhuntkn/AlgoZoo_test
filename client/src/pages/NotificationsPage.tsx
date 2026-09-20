@@ -3,15 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications, formatRelative } from '../context/NotificationContext'
-import type { Notification } from '../context/NotificationContext'
+import type { Notification } from '../types/notification'
 
 const typeLabel: Record<string, string> = {
   SUBMISSION_CREATED: 'Submissions',
-  SUBMISSION_RESUBMITTED: 'Submissions',
-  SUBMISSION_LATE: 'Submissions',
   ASSIGNMENT_ASSIGNED: 'Assignments',
-  SUBMISSION_SUCCESS: 'Submissions',
   GRADE_RELEASED: 'Grades',
+  USER_REGISTERED: 'Members',
 }
 
 function groupByCategory(notifs: Notification[]): Record<string, Notification[]> {
@@ -23,9 +21,9 @@ function groupByCategory(notifs: Notification[]): Record<string, Notification[]>
   }, {})
 }
 
-const CATEGORY_ORDER = ['Submissions', 'Assignments', 'Grades', 'Other']
+const CATEGORY_ORDER = ['Submissions', 'Assignments', 'Grades', 'Members', 'Other']
 
-function NotifItem({ n, onRead }: { n: Notification; onRead: (id: number) => void }) {
+function NotifItem({ n, onRead }: { n: Notification; onRead: (id: string) => void }) {
   const navigate = useNavigate()
 
   const handleClick = () => {
@@ -51,7 +49,7 @@ function NotifItem({ n, onRead }: { n: Notification; onRead: (id: number) => voi
           <p className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
             {n.title}
           </p>
-          <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{formatRelative(n.createdAt)}</span>
+          <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{formatRelative(new Date(n.createdAt))}</span>
         </div>
         <p className={`text-sm mt-0.5 ${!n.isRead ? 'text-gray-700' : 'text-gray-500'}`}>
           {n.message}
@@ -68,12 +66,13 @@ type TabKey = 'all' | 'unread'
 
 export function NotificationsPage() {
   const { user } = useAuth()
-  if (!user) return null
-  const { getForRole, getUnreadCount, markRead, markAllRead } = useNotifications()
+  const { notifications, getUnreadCount, markRead, markAllRead } = useNotifications()
   const [tab, setTab] = useState<TabKey>('all')
 
-  const all = getForRole(user.role)
-  const unreadCount = getUnreadCount(user.role)
+  if (!user) return null
+
+  const all = notifications
+  const unreadCount = getUnreadCount()
   const displayed = tab === 'unread' ? all.filter((n) => !n.isRead) : all
   const grouped = groupByCategory(displayed)
   const categories = CATEGORY_ORDER.filter((c) => grouped[c])
@@ -93,7 +92,7 @@ export function NotificationsPage() {
         </div>
         {unreadCount > 0 && (
           <button
-            onClick={() => markAllRead(user.role)}
+            onClick={() => markAllRead()}
             className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-accent font-semibold transition-colors"
           >
             <CheckCheck size={14} /> Mark all as read

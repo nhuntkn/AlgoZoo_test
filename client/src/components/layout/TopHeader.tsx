@@ -1,32 +1,26 @@
 import { useState } from 'react'
-import { Bell, Search } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNotifications } from '../../context/NotificationContext'
 import { NotificationDropdown } from '../ui/NotificationDropdown'
 
 export function TopHeader() {
   const { user } = useAuth()
-  const { getUnreadCount } = useNotifications()
+  const { getUnreadCount, refetch } = useNotifications()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   if (!user) return null
-  const unread = getUnreadCount(user.role)
+  const unread = getUnreadCount()
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10 flex-shrink-0">
-      <div className="relative max-w-xs w-full">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-accent/60 focus:bg-white transition-colors"
-        />
-      </div>
-
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-end px-6 sticky top-0 z-10 flex-shrink-0">
       <div className="flex items-center gap-4">
         {/* Notification bell */}
         <div className="relative">
           <button
-            onClick={() => setDropdownOpen((v) => !v)}
+            onClick={() => {
+              setDropdownOpen((v) => !v)
+              if (!dropdownOpen) refetch()
+            }}
             className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
             aria-label="Notifications"
           >
