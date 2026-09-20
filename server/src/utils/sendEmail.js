@@ -23,8 +23,6 @@ exports.sendSubmissionFeedbackEmail = async ({
   problemTitle,
   className,
   feedback,
-  classId,
-  classProblemId,
 }) => {
   if (!to) return;
   try {
@@ -32,11 +30,6 @@ exports.sendSubmissionFeedbackEmail = async ({
     const safeTitle = escapeHtml(problemTitle);
     const safeClass = escapeHtml(className);
     const safeFeedback = escapeHtml(feedback).replace(/\n/g, '<br/>');
-    // matching the frontend route: /student/classes/:classId/problems/:classProblemId
-    const reviewLink =
-      APP_BASE_URL && classId && classProblemId
-        ? `${APP_BASE_URL}student/classes/${classId}/problems/${classProblemId}`
-        : null;
 
     const html = `
 <!DOCTYPE html>
@@ -120,27 +113,14 @@ exports.sendSubmissionFeedbackEmail = async ({
                     </td>
                   </tr>
 
-                  ${
-                    reviewLink
-                      ? `
-                  <!-- CTA -->
+                  <!-- Note -->
                   <tr>
-                    <td style="padding:0 40px 40px;">
-                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-                        <tr>
-                          <td style="border-radius:8px; background-color:${BRAND_RED}; text-align:center;">
-                            <a href="${reviewLink}" target="_blank" style="display:block; padding:13px 24px; font-size:14px; font-weight:700; color:#ffffff; text-decoration:none;">
-                              View Submission &rarr;
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
+                    <td style="padding:0 40px 32px;">
+                      <p style="margin:0; font-size:14px; color:${TEXT_MUTED}; line-height:1.6; text-align:center;">
+                        Please log in to the AlgoZoo app to view your submission and the feedback.
+                      </p>
                     </td>
                   </tr>
-                  `
-                      : `<tr><td style="padding-bottom:16px;"></td></tr>`
-                  }
-
                 </table>
               </td>
             </tr>
