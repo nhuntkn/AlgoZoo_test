@@ -39,6 +39,15 @@ services:
       # write/read plus ptrace overhead, nested inside Piston's own sandboxing, so it's
       # meaningfully slower than native execution. Raise generously.
       - PISTON_RUN_TIMEOUT=15000
+      # Piston enforces run_timeout (wall clock) and run_cpu_time (actual CPU time used)
+      # as two INDEPENDENT limits — raising one does not raise the other. We'd only ever
+      # raised run_timeout, so run_cpu_time silently stayed at its 3000ms default and was
+      # killing every real gdb-driven C++ trace (which is CPU-heavy the whole time, unlike
+      # e.g. sleep(), which uses ~0 CPU and was passing at 8+ seconds wall clock even
+      # before this was set) with signal=SIGKILL, status="TO", cpu_time≈3000 — confirmed
+      # by reproducing the same kill with a plain CPU-bound busy loop that never touches
+      # gdb at all.
+      - PISTON_RUN_CPU_TIME=15000
       # Default max_process_count is 64 per job, which should already be generous, but
       # the C++ tracer needs at least 3 live processes at once (the driver itself, gdb,
       # and the debuggee gdb spawns) — set explicitly as a safety margin, since an

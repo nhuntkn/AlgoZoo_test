@@ -75,6 +75,8 @@ function buildTraceHarness(studentCode) {
 #include <set>
 #include <unistd.h>
 #include <cctype>
+#include <signal.h>
+#include <sys/wait.h>
 
 static const int MAX_STEPS = ${MAX_STEPS};
 static const int MAX_DEPTH = ${MAX_DEPTH};
@@ -255,6 +257,7 @@ static MIRecord parseLine(const std::string& line) {
 // GDB process management (real bidirectional pipes — popen() is one-directional)
 // ===========================================================================
 static int gdbInFd = -1, gdbOutFd = -1;
+static pid_t gdbPid = -1;
 static std::string readBuf;
 
 static bool spawnGdb(const char* binaryPath) {
@@ -275,6 +278,7 @@ static bool spawnGdb(const char* binaryPath) {
     close(outPipe[1]);
     gdbInFd = inPipe[1];
     gdbOutFd = outPipe[0];
+    gdbPid = pid;
     return true;
 }
 static void sendCmd(const std::string& cmd) {
@@ -314,6 +318,21 @@ static CmdBatch readUntilPrompt() {
         }
     }
     return res;
+}
+// Force gdb (and, via it, the ptrace-stopped debuggee it leaves behind whenever we stop
+// tracing before the student program has actually run to completion) to fully exit.
+// Without this, both processes linger as orphans after main() returns, and Piston's job
+// runner keeps the sandbox open waiting for the whole process tree to exit — holding the
+// request until PISTON_RUN_TIMEOUT forcibly SIGKILLs everything, even though our own
+// trace output was already written in full.
+static void shutdownGdb() {
+    if (gdbPid <= 0) return;
+    sendCmd("kill");
+    readUntilPrompt();
+    sendCmd("-gdb-exit");
+    readUntilPrompt();
+    kill(gdbPid, SIGKILL);
+    waitpid(gdbPid, nullptr, 0);
 }
 static const MIVal* findDone(const CmdBatch& b, const std::string& field) {
     for (auto& r : b.records) if (r.kind == '^' && r.cls == "done") { const MIVal* f = miGet(r.data, field); if (f) return f; }
@@ -541,6 +560,14 @@ int main() {
     }
 
     readUntilPrompt(); // consume gdb's own startup banner/prompt before sending anything
+    // MI is documented to suppress most confirmation queries automatically, but "kill"
+    // (used during shutdown, below) and pagination prompts on long output are worth
+    // disabling explicitly too — a blocked query is a silent hang, since our reader loop
+    // just waits forever for a "(gdb)" prompt that a pending y/n query never produces.
+    sendCmd("set confirm off");
+    readUntilPrompt();
+    sendCmd("set pagination off");
+    readUntilPrompt();
     sendCmd("set auto-load safe-path /");
     readUntilPrompt();
     // Tell gdb to internally fast-forward through STL/library headers during "step"
@@ -682,6 +709,8 @@ int main() {
             res = waitForStop();
         }
     }
+
+    shutdownGdb();
 
     std::string stdoutCapture;
     FILE* outF = fopen("/tmp/inferior_stdout.txt", "r");
