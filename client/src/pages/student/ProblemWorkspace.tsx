@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Badge, TypeBadge, StatusDot } from '../../components/ui/Badge'
+import { CodeEditor as MonacoCodeEditor } from '../../components/ui/CodeEditor'
 import { TraceVisualizer } from '../../components/problem/TraceVisualizer'
 import { useAuth } from '../../hooks/useAuth'
 import { studentService } from '../../services/studentService'
@@ -25,6 +26,13 @@ type FileBlockDraft = { id: string; type: 'image' | 'file'; file: File; previewU
 type BlockDraft = TextBlockDraft | CodeBlockDraft | FileBlockDraft
 
 const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++', 'TypeScript']
+const MONACO_LANGUAGE: Record<string, string> = {
+  Python: 'python',
+  JavaScript: 'javascript',
+  Java: 'java',
+  'C++': 'cpp',
+  TypeScript: 'typescript',
+}
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
 let _blockId = 0
 const genId = () => String(_blockId++)
@@ -57,7 +65,8 @@ function AttachmentPreview({ block }: { block: SubmissionContentBlock }) {
   const rawSrc = block.file_id ? getFileUrl(block.file_id) : undefined
   const lower = block.filename?.toLowerCase() ?? ''
   const showImg = block.type === 'image' || IMAGE_EXTS.some(ext => lower.endsWith(ext))
-  const blobUrl = useFileBlob(showImg ? rawSrc : undefined)
+  const isPdf = lower.endsWith('.pdf')
+  const blobUrl = useFileBlob(rawSrc)
   const label = block.filename || 'Uploaded file'
   return (
     <div className="border-b border-gray-50 last:border-b-0">
@@ -74,6 +83,9 @@ function AttachmentPreview({ block }: { block: SubmissionContentBlock }) {
         <div className="px-5 py-4 flex justify-center">
           <img src={blobUrl} alt={label} className="max-w-full max-h-96 rounded-lg" />
         </div>
+      )}
+      {isPdf && blobUrl && (
+        <iframe src={blobUrl} title={label} className="w-full h-96 border-t border-gray-100" />
       )}
     </div>
   )
@@ -129,12 +141,12 @@ function CodeEditor({ block, onChange, onLangChange, onDelete }: {
           </button>
         </div>
       </div>
-      <textarea
+      <MonacoCodeEditor
         value={block.content}
-        onChange={e => onChange(e.target.value)}
-        rows={12}
-        placeholder={`Paste your ${block.language} code here...`}
-        className="w-full px-4 py-4 text-sm text-gray-100 font-mono resize-y focus:outline-none bg-transparent"
+        onChange={onChange}
+        language={MONACO_LANGUAGE[block.language] ?? 'plaintext'}
+        height="360px"
+        bare
       />
     </div>
   )
@@ -143,6 +155,7 @@ function CodeEditor({ block, onChange, onLangChange, onDelete }: {
 // ── File/Image block editor ──────────────────────────────────────────
 function FileEditor({ block, onDelete }: { block: FileBlockDraft; onDelete: () => void }) {
   const isImage = block.type === 'image'
+  const isPdf = block.filename.toLowerCase().endsWith('.pdf')
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
@@ -161,6 +174,8 @@ function FileEditor({ block, onDelete }: { block: FileBlockDraft; onDelete: () =
         <div className="px-4 py-3 flex justify-center">
           <img src={block.previewUrl} alt={block.filename} className="max-w-full max-h-64 rounded-lg object-contain" />
         </div>
+      ) : isPdf ? (
+        <iframe src={block.previewUrl} title={block.filename} className="w-full h-64" />
       ) : (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
           <Paperclip size={14} className="text-gray-400" /> {block.filename}
@@ -466,11 +481,8 @@ export function ProblemWorkspace() {
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf" onChange={handleFileChange} className="hidden" />
 
-      {/* Main 2-column layout */}
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_300px] gap-5">
-
-        {/* ── Left column ─────────────────────────────────────────── */}
-        <div className="space-y-4">
+      {/* Full-width stack: Problem description, then My Solution, then info row */}
+      <div className="space-y-5">
 
           {/* Problem card */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
@@ -670,10 +682,9 @@ export function ProblemWorkspace() {
               </div>
             </div>
           )}
-        </div>
 
-        {/* ── Right sidebar ────────────────────────────────────────── */}
-        <div className="space-y-4">
+        {/* ── Info row: Problem Info / Trainer Feedback / Submit ────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
 
           {/* Problem Info card */}
           <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4 text-sm">
@@ -747,37 +758,38 @@ export function ProblemWorkspace() {
             )}
           </div>
 
-          {/* Submit Solution — only when not yet submitted */}
-          {!submitted && (
-            <div>
-              {error && <p className="mb-3 text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-              <Button
-                onClick={submit}
-                disabled={!canSubmit}
-                className="w-full justify-center"
-              >
-                <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Solution'}
-              </Button>
-            </div>
-          )}
-
-          {/* Submission info when already submitted */}
-          {submitted && submission && (
-            <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 text-sm">
-              <h3 className="font-semibold text-gray-900">Submission Info</h3>
+          {/* Submit Solution / Submission Info */}
+          <div className="space-y-4">
+            {!submitted && (
               <div>
-                <p className="text-xs text-gray-400 mb-0.5">Submitted</p>
-                <p className="font-medium text-gray-900">{formatDateTime(submission.createdAt)}</p>
+                {error && <p className="mb-3 text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+                <Button
+                  onClick={submit}
+                  disabled={!canSubmit}
+                  className="w-full justify-center"
+                >
+                  <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Solution'}
+                </Button>
               </div>
-              {submission.isLate && (
+            )}
+
+            {submitted && submission && (
+              <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 text-sm">
+                <h3 className="font-semibold text-gray-900">Submission Info</h3>
                 <div>
-                  <span className="inline-flex items-center gap-1 text-orange-500 font-medium text-xs">
-                    <Clock size={12} /> Submitted late
-                  </span>
+                  <p className="text-xs text-gray-400 mb-0.5">Submitted</p>
+                  <p className="font-medium text-gray-900">{formatDateTime(submission.createdAt)}</p>
                 </div>
-              )}
-            </div>
-          )}
+                {submission.isLate && (
+                  <div>
+                    <span className="inline-flex items-center gap-1 text-orange-500 font-medium text-xs">
+                      <Clock size={12} /> Submitted late
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -37,7 +37,8 @@ function AttachmentPreview({ block }: { block: SubmissionContentBlock }) {
   const rawSrc = block.file_id ? getFileUrl(block.file_id) : undefined
   const lower = block.filename?.toLowerCase() ?? ''
   const showImg = block.type === 'image' || IMAGE_EXTS.some((ext) => lower.endsWith(ext))
-  const blobUrl = useFileBlob(showImg ? rawSrc : undefined)
+  const isPdf = lower.endsWith('.pdf')
+  const blobUrl = useFileBlob(rawSrc)
   const label = block.filename || 'Uploaded file'
   return (
     <div className="border-b border-gray-50 last:border-b-0">
@@ -54,6 +55,9 @@ function AttachmentPreview({ block }: { block: SubmissionContentBlock }) {
         <div className="px-5 py-4 flex justify-center">
           <img src={blobUrl} alt={label} className="max-w-full max-h-96 rounded-lg" />
         </div>
+      )}
+      {isPdf && blobUrl && (
+        <iframe src={blobUrl} title={label} className="w-full h-96 border-t border-gray-100" />
       )}
     </div>
   )

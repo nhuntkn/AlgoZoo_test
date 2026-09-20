@@ -45,8 +45,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 function BlockView({ block }: { block: ContentBlock }) {
   const rawSrc = block.file_id ? getFileUrl(block.file_id) : undefined
   const lower = block.filename?.toLowerCase() ?? ''
-  const isImageBlock = block.type === 'image' || (block.type === 'file' && IMAGE_EXTS.some(ext => lower.endsWith(ext)))
-  const blobUrl = useFileBlob(isImageBlock ? rawSrc : undefined)
+  const blobUrl = useFileBlob(rawSrc)
 
   if (block.type === 'text') {
     return (
@@ -130,8 +129,8 @@ function BlockView({ block }: { block: ContentBlock }) {
             <img src={blobUrl} alt={block.filename ?? 'Attached image'} className="max-w-full max-h-96 rounded-lg" />
           </div>
         )}
-        {rawSrc && isPdf && (
-          <iframe src={rawSrc} title={block.filename ?? 'PDF preview'} className="w-full h-96 border-t border-gray-100" />
+        {blobUrl && isPdf && (
+          <iframe src={blobUrl} title={block.filename ?? 'PDF preview'} className="w-full h-96 border-t border-gray-100" />
         )}
       </div>
     )
