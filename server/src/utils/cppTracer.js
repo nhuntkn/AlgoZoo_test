@@ -62,8 +62,42 @@ const MAX_HEAP_OBJECTS = 150;
 const MAX_CONTAINER_ITEMS = 200;
 const MAX_STRING_LEN = 300;
 
+// gdb's own scope-listing only tells us a variable is "uninitialized garbage" for the one
+// case where a nested block (loops, ifs) gives it a real DWARF lexical-block boundary —
+// plain sequential declarations at a function's top level are visible to gdb from the
+// function's very first line, well before their own initializer runs, so that signal
+// alone misses the common case (`int x = 0;` as an ordinary statement). This does a
+// best-effort textual scan for "TYPE NAME = ..." / "TYPE NAME;" declaration statements to
+// find each local's real declaration line, used as the primary signal at runtime; the
+// scope-listing heuristic remains a fallback for anything this regex doesn't recognize
+// (structured bindings, multi-declarator lines, unusual formatting). False negatives here
+// just fall back to showing gdb's raw (possibly garbage) value, same as before this fix —
+// this only needs to be good enough for typical DSA-style code, not a full C++ parser.
+const DECL_RE = /(^|[;{(]|for\s*\()\s*((?:const\s+)?[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\s*<(?:[^<>]|<[^<>]*>)*>)?(?:\s*[*&])*)\s+([A-Za-z_]\w*)\s*(=(?!=)|[;,])/g;
+const DECL_KEYWORD_BLOCKLIST = new Set(['return', 'if', 'while', 'for', 'switch', 'else', 'do', 'delete', 'new', 'sizeof', 'using', 'namespace']);
+
+function scanDeclarationLines(studentCode) {
+  const declLines = {};
+  studentCode.split('\n').forEach((line, idx) => {
+    const lineNo = idx + 1;
+    let m;
+    DECL_RE.lastIndex = 0;
+    while ((m = DECL_RE.exec(line)) !== null) {
+      const typeTok = m[2].trim().split(/[\s<*&:]/)[0];
+      const name = m[3];
+      if (DECL_KEYWORD_BLOCKLIST.has(typeTok) || DECL_KEYWORD_BLOCKLIST.has(name)) continue;
+      if (!(name in declLines)) declLines[name] = lineNo;
+    }
+  });
+  return declLines;
+}
+
 function buildTraceHarness(studentCode) {
   const encoded = Buffer.from(studentCode, 'utf-8').toString('base64');
+  const declLines = scanDeclarationLines(studentCode);
+  const declLineEntries = Object.entries(declLines)
+    .map(([name, line]) => `{${JSON.stringify(name)}, ${line}}`)
+    .join(', ');
 
   return `// Auto-generated gdb/MI driver — see server/src/utils/cppTracer.js
 #include <cstdio>
@@ -368,6 +402,25 @@ static std::map<std::string, HeapEntry> heap; // address -> entry (raw, JSON-enc
 static std::set<std::string> seenAddrs;
 static int varObjCounter = 0;
 
+// Local variables become visible in gdb's own scope listing (-stack-list-variables)
+// starting exactly at their declaration point, before the initializer has actually run —
+// so the very first time a name appears for a given call, its value is leftover stack
+// garbage, not a real value. Track, per stack position (counted from the outermost frame,
+// which stays stable across pushes/pops of deeper calls — safe for recursion), which
+// names have already been seen for the CURRENT call at that position; a name's first
+// appearance is reported as "uninitialized" instead of gdb's raw value, and every
+// appearance after that is real. Reset a position's set whenever a fresh call lands
+// there (function parameters are exempt: they're valid from the moment of entry, so
+// they're seeded as already-known rather than flagged).
+static std::vector<std::set<std::string>> knownVarsByPos;
+
+// Best-effort declaration-line lookup from a textual scan of the student's own source
+// (server/src/utils/cppTracer.js's scanDeclarationLines) — the primary signal for
+// catching plain top-level locals (e.g. "int x = 0;") that gdb's own scope listing can't
+// distinguish from function parameters (see knownVarsByPos's comment above for why that
+// heuristic alone isn't enough). A name absent here falls back to that heuristic instead.
+static const std::map<std::string, int> DECL_LINE = { ${declLineEntries} };
+
 static bool isPointerValue(const std::string& v) {
     return v.rfind("0x", 0) == 0 && v != "0x0";
 }
@@ -452,6 +505,7 @@ static std::string serializeValueRef(const std::string& varObjName, const std::s
     return "S:" + rawValue;
 }
 static std::string encodeStagedValue(const std::string& staged) {
+    if (staged.rfind("X:", 0) == 0) return "{\\"kind\\":\\"uninitialized\\"}";
     if (staged.rfind("U:", 0) == 0) return "{\\"kind\\":\\"value\\",\\"value\\":null}";
     if (staged.rfind("N:", 0) == 0) return "{\\"kind\\":\\"value\\",\\"value\\":" + staged.substr(2) + "}";
     if (staged.rfind("B:", 0) == 0) return std::string("{\\"kind\\":\\"value\\",\\"value\\":") + (staged[2] == '1' ? "true" : "false") + "}";
@@ -668,12 +722,17 @@ int main() {
             const MIVal& frameTuple = stackList->fields[i].second;
             std::string fn = miGetStr(frameTuple, "func");
             int lineNo = atoi(miGetStr(frameTuple, "line", "0").c_str());
+            int pos = depth - 1 - k; // 0 = outermost; stable identity for a given call, even under recursion
 
             sendCmd("-stack-select-frame " + std::to_string(i));
             readUntilPrompt();
             sendCmd("-stack-list-variables --all-values");
             CmdBatch varsRes = readUntilPrompt();
             const MIVal* varsList = findDone(varsRes, "variables");
+
+            if ((int)knownVarsByPos.size() <= pos) knownVarsByPos.resize(pos + 1);
+            bool isFreshCall = (event == "call" && pos == depth - 1);
+            if (isFreshCall) knownVarsByPos[pos].clear();
 
             FrameOut frameOut;
             frameOut.fn = fn;
@@ -683,6 +742,39 @@ int main() {
                     std::string vname = miGetStr(item, "name");
                     std::string vvalue = miGetStr(item, "value");
                     if (vname.empty()) continue;
+                    bool alreadyKnown = knownVarsByPos[pos].count(vname) > 0;
+                    auto declIt = DECL_LINE.find(vname);
+                    if (declIt != DECL_LINE.end()) {
+                        // Primary signal: a real textual declaration line was found for
+                        // this name. Hide from function entry through (and including)
+                        // that exact line — the initializer hasn't run until the NEXT
+                        // step — then show real values forever after for this call.
+                        if (!alreadyKnown) {
+                            if (lineNo <= declIt->second) {
+                                frameOut.vars.push_back({vname, "X:"});
+                                if (lineNo == declIt->second) knownVarsByPos[pos].insert(vname);
+                                continue;
+                            }
+                            // Stepped past the detected line without ever matching it
+                            // exactly (our textual scan missed by a line, e.g. a
+                            // multi-line declaration) — fail open rather than hiding
+                            // this variable for the rest of the call.
+                            knownVarsByPos[pos].insert(vname);
+                        }
+                        frameOut.vars.push_back({vname, serializeTopLevel(vname, vvalue)});
+                        continue;
+                    }
+                    // No textual declaration found for this name — almost certainly a
+                    // parameter (real locals are caught by the branch above). Fall back
+                    // to gdb's own scope listing: hide only if this is the first time
+                    // it's appeared for this call AND we're past the "call" step itself
+                    // (which is assumed to be nothing but parameters).
+                    bool shouldHide = !alreadyKnown && !isFreshCall;
+                    if (!alreadyKnown) knownVarsByPos[pos].insert(vname);
+                    if (shouldHide) {
+                        frameOut.vars.push_back({vname, "X:"});
+                        continue;
+                    }
                     frameOut.vars.push_back({vname, serializeTopLevel(vname, vvalue)});
                 }
             }

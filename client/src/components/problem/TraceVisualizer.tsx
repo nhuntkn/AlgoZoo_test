@@ -51,6 +51,7 @@ interface HeapRow {
 
 function formatValue(v: TraceValue, language: string): string {
   if (v.kind === 'undefined') return 'undefined'
+  if (v.kind === 'uninitialized') return 'uninitialized'
   return v.kind === 'value' ? formatPrimitive(v.value, language) : '<ref>'
 }
 
