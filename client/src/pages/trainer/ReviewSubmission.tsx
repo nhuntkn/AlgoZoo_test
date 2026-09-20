@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { getSubmissionDetail, reviewSubmission } from '../../services/submissionService'
 import { getFileUrl } from '../../services/fileService'
 import { getProblemDetail } from '../../services/problemService'
+import { sanitizeHtml } from '../../utils/sanitizeHtml'
 import type { SubmissionDetail, ContentBlock } from '../../types/submission'
 import type { Problem } from '../../types/problem'
 
@@ -54,7 +55,10 @@ function BlockView({ block }: { block: ContentBlock }) {
           <FileText size={13} className="text-gray-400" />
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Explanation</span>
         </div>
-        <div className="px-5 py-4 text-sm text-gray-700 leading-relaxed whitespace-pre-line">{block.content}</div>
+        <div
+          className="rich-text-output px-5 py-4 text-sm text-gray-700 leading-relaxed whitespace-pre-line"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content ?? '') }}
+        />
       </div>
     )
   }

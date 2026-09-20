@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { studentService } from '../../services/studentService'
 import { getFileUrl } from '../../services/fileService'
+import { sanitizeHtml } from '../../utils/sanitizeHtml'
 import type { StudentProblemDetail } from '../../types/classProblem'
 import type { SubmissionContentBlock } from '../../types/submission'
 
@@ -165,7 +166,10 @@ export function SubmissionStatus() {
                       <FileText size={13} className="text-gray-400" />
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Text</span>
                     </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{block.content}</p>
+                    <div
+                      className="rich-text-output text-sm text-gray-700 whitespace-pre-line leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content ?? '') }}
+                    />
                   </div>
                 )}
                 {block.type === 'code' && (
